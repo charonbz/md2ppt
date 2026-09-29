@@ -9,6 +9,8 @@ class SlideType(str, Enum):
     DEFINITION = "definition"
     CARDS = "cards"
     CODE = "code"
+    TABLE = "table"
+    IMAGE = "image"
     STANDARD = "standard"
 
 
@@ -30,6 +32,20 @@ class CardItem:
 
 
 @dataclass
+class TableData:
+    headers: List[str]
+    rows: List[List[str]]
+    alignments: List[str] = field(default_factory=list)  # "left", "center", "right"
+
+
+@dataclass
+class ImageData:
+    alt: str
+    src: str
+    resolved_path: Optional[Path] = None
+
+
+@dataclass
 class SlideData:
     index: int
     slide_type: SlideType
@@ -41,6 +57,8 @@ class SlideData:
     cards: List[CardItem] = field(default_factory=list)
     list_items: List[str] = field(default_factory=list)
     code_snippet: Optional[Dict[str, str]] = None
+    table: Optional[TableData] = None
+    images: List[ImageData] = field(default_factory=list)
     audio_filename: Optional[str] = None
     audio_path: Optional[Path] = None
     notes: Optional[str] = None

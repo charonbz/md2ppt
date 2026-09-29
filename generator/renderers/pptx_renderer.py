@@ -1,10 +1,13 @@
 from pathlib import Path
 from typing import Optional
+from PIL import Image
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
+from pptx.oxml import parse_xml
+from pptx.oxml.ns import nsdecls
 from ..models import PresentationData, SlideData, SlideType, ThemeConfig, ArchetypeType
 from ..markdown_utils import parse_markdown_runs
 
@@ -31,14 +34,66 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
         run.text = ""
         return
 
-    for chunk_text, is_bold, is_italic, is_code in runs_data:
+    for item in runs_data:
+        chunk_text = item.text
+        is_bold = item.is_bold
+        is_italic = item.is_italic
+        is_code = item.is_code
+        is_strike = getattr(item, "is_strike", False)
+        is_highlight = getattr(item, "is_highlight", False)
+        is_sub = getattr(item, "is_sub", False)
+        is_sup = getattr(item, "is_sup", False)
+
         run = paragraph.add_run()
         run.text = chunk_text
         run.font.name = "Consolas" if is_code else default_font
-        run.font.size = default_size
+        if is_sup or is_sub:
+            run.font.size = Pt(max(default_size.pt * 0.72, 8))
+        else:
+            run.font.size = default_size
+
         run.font.color.rgb = default_color
         run.font.bold = is_bold or is_title
         run.font.italic = is_italic
+
+        rPr = run._r.get_or_add_rPr()
+        if is_strike:
+            rPr.set('strike', 'sngStrike')
+        if is_sup:
+            rPr.set('baseline', '30000')
+        elif is_sub:
+            rPr.set('baseline', '-25000')
+        if is_highlight:
+            try:
+                rPr.append(parse_xml(f'<a:highlight {nsdecls("a")}><a:srgbClr val="FFD700"/></a:highlight>'))
+            except Exception:
+                pass
+
+
+def _add_picture_fit(slide, img_path: Path, left, top, max_width, max_height):
+    """Adds a picture to the slide fitting within max_width and max_height while preserving aspect ratio."""
+    try:
+        with Image.open(img_path) as im:
+            orig_w, orig_h = im.size
+        if orig_h == 0 or orig_w == 0:
+            return slide.shapes.add_picture(str(img_path), left, top, width=max_width)
+
+        aspect = orig_w / orig_h
+        box_aspect = max_width / max_height
+        if aspect > box_aspect:
+            render_w = int(max_width)
+            render_h = int(max_width / aspect)
+            render_left = int(left)
+            render_top = int(top + (max_height - render_h) / 2)
+        else:
+            render_h = int(max_height)
+            render_w = int(max_height * aspect)
+            render_top = int(top)
+            render_left = int(left + (max_width - render_w) / 2)
+        return slide.shapes.add_picture(str(img_path), render_left, render_top, width=render_w, height=render_h)
+    except Exception as e:
+        print(f"[PPTX] Warning: Could not add picture {img_path}: {e}")
+        return None
 
 
 def render_pptx_presentation(pres: PresentationData, theme: ThemeConfig, dist_dir: Path) -> Path:
@@ -109,6 +164,18 @@ def render_pptx_presentation(pres: PresentationData, theme: ThemeConfig, dist_di
             _render_pptx_code_slide(
                 slide, slide_data, theme,
                 primary_text_rgb, secondary_text_rgb, accent_rgb,
+                deck_title=deck_title
+            )
+        elif slide_data.slide_type == SlideType.TABLE:
+            _render_pptx_table_slide(
+                slide, slide_data, theme,
+                card_bg_rgb, card_border_rgb, primary_text_rgb, secondary_text_rgb, accent_rgb,
+                deck_title=deck_title
+            )
+        elif slide_data.slide_type == SlideType.IMAGE:
+            _render_pptx_image_slide(
+                slide, slide_data, theme,
+                accent_rgb, primary_text_rgb, secondary_text_rgb,
                 deck_title=deck_title
             )
         else:
@@ -593,13 +660,135 @@ def _render_pptx_code_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         p.font.color.rgb = RGBColor(230, 237, 243)
 
 
+def _render_pptx_table_slide(slide, slide_data: SlideData, theme: ThemeConfig,
+                             card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
+                             deck_title: str = ""):
+    cat_label = deck_title.upper() if deck_title else "TÁBLÁZAT"
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
+    font_name = _get_font_name(theme)
+    arch = theme.archetype
+
+    table_data = slide_data.table
+    if not table_data or not table_data.headers:
+        return
+
+    num_rows = len(table_data.rows) + 1
+    num_cols = len(table_data.headers)
+
+    top = Inches(2.2)
+    left = Inches(1.0)
+    width = Inches(11.333)
+
+    if slide_data.paragraphs:
+        intro_box = slide.shapes.add_textbox(left, top, width, Inches(0.55))
+        tf_i = intro_box.text_frame
+        tf_i.word_wrap = True
+        ip = tf_i.paragraphs[0]
+        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, Pt(16), secondary_rgb)
+        top = Inches(2.8)
+
+    table_height = min(Inches(0.55 * num_rows), Inches(4.3))
+    table_shape = slide.shapes.add_table(num_rows, num_cols, left, top, width, table_height)
+    table = table_shape.table
+
+    col_w = int(width / num_cols)
+    for col in table.columns:
+        col.width = col_w
+
+    align_map = {
+        "left": PP_ALIGN.LEFT,
+        "center": PP_ALIGN.CENTER,
+        "right": PP_ALIGN.RIGHT
+    }
+
+    # Header Row
+    for c_idx, h_text in enumerate(table_data.headers):
+        cell = table.cell(0, c_idx)
+        cell.fill.solid()
+        if arch == ArchetypeType.EDITORIAL:
+            cell.fill.fore_color.rgb = card_bg_rgb
+            h_color = primary_rgb
+        elif arch == ArchetypeType.TERMINAL:
+            cell.fill.fore_color.rgb = RGBColor(20, 30, 20)
+            h_color = accent_rgb
+        else:
+            cell.fill.fore_color.rgb = accent_rgb
+            h_color = RGBColor(255, 255, 255)
+
+        tf = cell.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        _add_formatted_runs(p, h_text, font_name, Pt(14), h_color, is_title=True)
+        col_align = table_data.alignments[c_idx] if c_idx < len(table_data.alignments) else "left"
+        p.alignment = align_map.get(col_align, PP_ALIGN.LEFT)
+
+    # Body Rows
+    for r_idx, row in enumerate(table_data.rows):
+        is_even = (r_idx % 2 == 1)
+        for c_idx, cell_text in enumerate(row):
+            if c_idx >= num_cols:
+                break
+            cell = table.cell(r_idx + 1, c_idx)
+            cell.fill.solid()
+            if is_even:
+                cell.fill.fore_color.rgb = card_bg_rgb
+            else:
+                cell.fill.fore_color.rgb = RGBColor(
+                    min(255, card_bg_rgb[0] + 8),
+                    min(255, card_bg_rgb[1] + 8),
+                    min(255, card_bg_rgb[2] + 8)
+                ) if arch != ArchetypeType.NEUBRUTALISM else card_bg_rgb
+
+            tf = cell.text_frame
+            tf.word_wrap = True
+            p = tf.paragraphs[0]
+            _add_formatted_runs(p, cell_text, font_name, Pt(13), primary_rgb)
+            col_align = table_data.alignments[c_idx] if c_idx < len(table_data.alignments) else "left"
+            p.alignment = align_map.get(col_align, PP_ALIGN.LEFT)
+
+
+def _render_pptx_image_slide(slide, slide_data: SlideData, theme: ThemeConfig,
+                             accent_rgb, primary_rgb, secondary_rgb,
+                             deck_title: str = ""):
+    cat_label = deck_title.upper() if deck_title else "ILLUSZTRÁCIÓ"
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
+    font_name = _get_font_name(theme)
+
+    top = Inches(2.2)
+    max_h = Inches(4.5)
+
+    if slide_data.paragraphs:
+        intro_box = slide.shapes.add_textbox(Inches(1.0), top, Inches(11.333), Inches(0.5))
+        tf_i = intro_box.text_frame
+        tf_i.word_wrap = True
+        ip = tf_i.paragraphs[0]
+        ip.alignment = PP_ALIGN.CENTER
+        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, Pt(16), secondary_rgb)
+        top = Inches(2.8)
+        max_h = Inches(3.9)
+
+    if slide_data.images:
+        img_info = slide_data.images[0]
+        if img_info.resolved_path and img_info.resolved_path.exists():
+            _add_picture_fit(slide, img_info.resolved_path, Inches(1.5), top, Inches(10.333), max_h)
+            if img_info.alt:
+                cap_box = slide.shapes.add_textbox(Inches(1.0), Inches(6.8), Inches(11.333), Inches(0.4))
+                cp = cap_box.text_frame.paragraphs[0]
+                cp.alignment = PP_ALIGN.CENTER
+                _add_formatted_runs(cp, img_info.alt, font_name, Pt(12), secondary_rgb)
+
+
 def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                                 card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
                                 deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "ÁTTEKINTÉS"
     _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
-    tb = slide.shapes.add_textbox(Inches(1.0), Inches(2.2), Inches(11.333), Inches(4.3))
+
+    has_image = bool(slide_data.images and slide_data.images[0].resolved_path and slide_data.images[0].resolved_path.exists())
+    text_width = Inches(6.0) if has_image else Inches(11.333)
+
+    tb = slide.shapes.add_textbox(Inches(1.0), Inches(2.2), text_width, Inches(4.5))
     tf = tb.text_frame
     tf.word_wrap = True
     first = True
@@ -607,7 +796,7 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
         p = tf.paragraphs[0] if first else tf.add_paragraph()
         first = False
         p.space_after = Pt(12)
-        _add_formatted_runs(p, p_text, font_name, Pt(18), primary_rgb)
+        _add_formatted_runs(p, p_text, font_name, Pt(17), primary_rgb)
 
     for item_text in slide_data.list_items:
         p = tf.paragraphs[0] if first else tf.add_paragraph()
@@ -615,12 +804,31 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
         p.space_after = Pt(8)
         p.level = 0
         bullet_run = p.add_run()
-        bullet_run.text = "• "
+        if item_text.startswith("[x] "):
+            bullet_run.text = "☑ "
+            bullet_run.font.color.rgb = accent_rgb
+            clean_item = item_text[4:]
+        elif item_text.startswith("[ ] "):
+            bullet_run.text = "☐ "
+            bullet_run.font.color.rgb = secondary_rgb
+            clean_item = item_text[4:]
+        else:
+            bullet_run.text = "• "
+            bullet_run.font.color.rgb = accent_rgb
+            clean_item = item_text
         bullet_run.font.name = font_name
-        bullet_run.font.size = Pt(18)
+        bullet_run.font.size = Pt(17)
         bullet_run.font.bold = True
-        bullet_run.font.color.rgb = accent_rgb
-        _add_formatted_runs(p, item_text, font_name, Pt(18), primary_rgb)
+        _add_formatted_runs(p, clean_item, font_name, Pt(17), primary_rgb)
+
+    if has_image:
+        img_info = slide_data.images[0]
+        _add_picture_fit(slide, img_info.resolved_path, Inches(7.4), Inches(2.2), Inches(4.9), Inches(4.3))
+        if img_info.alt:
+            cap_box = slide.shapes.add_textbox(Inches(7.4), Inches(6.6), Inches(4.9), Inches(0.4))
+            cp = cap_box.text_frame.paragraphs[0]
+            cp.alignment = PP_ALIGN.CENTER
+            _add_formatted_runs(cp, img_info.alt, font_name, Pt(11), secondary_rgb)
 
 
 def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme: ThemeConfig):

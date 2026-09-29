@@ -30,9 +30,43 @@ def generate_slides(markdown_text: str) -> None:
 
 ---
 
-## Gyakorlati Előnyök
+## Formátum-összehasonlító Táblázat
 
-A rendszer a legmodernebb Markdown szerkezeteket támogatja:
-- **Gyors fordítás**: ezredmásodpercek alatt kész PPTX, HTML és PDF.
-- *Tipográfiai hierarchia*: elegáns szerif és sans-serif archetípusok.
-- `Zero-Dependency`: minden hanganyag közvetlenül beágyazva található.
+Az alábbi táblázat bemutatja az egyes kimeneti formátumok legfőbb tulajdonságait:
+
+| Formátum | Motor / Technológia | Hangkíséret | Függőségmentes |
+| :--- | :---: | :---: | ---: |
+| HTML5 Player | Natív ES6 + Web Audio | Base64 MP3 | 100% Önálló |
+| PowerPoint (.pptx) | OpenXML / python-pptx | Beágyazott média | Szerkeszthető |
+| Vektoros PDF | Headless Chromium (16:9) | Nem releváns | Nyomtatható |
+
+---
+
+## Rendszerarchitektúra Áttekintés
+
+A háromcsatornás renderelési architektúra sematikus ábrája:
+
+![Tri-Format Architektúra Diagram](architecture.png)
+
+---
+
+## Tervezési Alapelvek
+
+A generátor szigorú specifikáció szerint működik:
+- **Tri-Format paritás**: Minden megjelenítési forma azonos vizuális élményt ad.
+- *Gyors fordítás*: Pár másodperc alatt elkészül az összes formátum.
+- `file:///` kompatibilitás: A böngésző nem blokkolja a helyi forrásokat.
+
+![Moduláris Felépítés](architecture.png)
+
+---
+
+## Kiterjesztett Markdown és Feladatlista
+
+A rendszer támogatja a legújabb tipográfiai elemeket és feladatlistákat:
+- ~~Elavult monolitikus felépítés~~ helyett modern moduláris motor
+- ==Kiemelt fontosságú== vizuális elemek és fókuszpontok
+- Kémiai képletek: H~2~O és matematikai hatványok: E = mc^2^
+- [x] Tri-Format paritás biztosítása (HTML, PPTX, PDF)
+- [x] Képek és táblázatok natív renderelése
+- [ ] További témasablonok készítése

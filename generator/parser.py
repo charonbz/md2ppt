@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
-from .models import SlideData, SlideType, CardItem, PresentationData
+from .models import SlideData, SlideType, CardItem, PresentationData, TableData, ImageData
 from .markdown_utils import strip_markdown
 
 
@@ -10,6 +10,8 @@ NOTES_COMMENT_RE = re.compile(r"<!--\s*notes:\s*(.+?)\s*-->", re.IGNORECASE | re
 TYPE_COMMENT_RE = re.compile(r"<!--\s*(?:type|layout):\s*([^\s>]+)\s*-->", re.IGNORECASE)
 TITLE_COMMENT_RE = re.compile(r"<!--\s*title:\s*(.+?)\s*-->", re.IGNORECASE)
 AUTHOR_RE = re.compile(r"^(?:készítette|szerző|author|by)\s*:\s*(.+)$", re.IGNORECASE)
+IMAGE_RE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<src>[^)]+)\)")
+TABLE_SEP_RE = re.compile(r"^\s*\|?(?:\s*:?-+:?\s*\|)+\s*(?::?-+:?)?\s*\|?\s*$")
 
 
 def parse_slides_file(slides_path: Path) -> PresentationData:
@@ -210,7 +212,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
                 first_non_blank_idx + 1 < len(remaining_lines)
                 and remaining_lines[first_non_blank_idx + 1].strip().startswith(": ")
             )
-            if not has_definition_on_next and not first_s.startswith(("- ", "* ", "• ", ">", "```", ": ")) and (index == 1 or len(first_s) < 55):
+            if not has_definition_on_next and not first_s.startswith(("- ", "* ", "• ", ">", "```", ": ", "|", "![")) and (index == 1 or len(first_s) < 55):
                 candidate = strip_markdown(first_s).rstrip(":")
                 if candidate and not (index > 1 and re.search(r"[.!?]$", candidate) and len(candidate) > 40):
                     header_title = candidate
@@ -222,37 +224,49 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
     else:
         content_lines = remaining_lines
 
-    # 4. Parse content structures: code blocks, blockquotes, definition lists, cards, lists, paragraphs
-    parsed_content = _parse_content_structures(content_lines)
+    # 4. Parse content structures: code blocks, blockquotes, definition lists, cards, tables, images, lists, paragraphs
+    parsed_content = _parse_content_structures(content_lines, source_dir)
 
     code_snippet = parsed_content["code_snippet"]
     quote = parsed_content["quote"]
     raw_cards = parsed_content["cards"]
     list_items = parsed_content["list_items"]
     paragraphs = parsed_content["paragraphs"]
+    table = parsed_content["table"]
+    images = parsed_content["images"]
     extracted_author = parsed_content.get("author")
 
     # 5. Detect slide type
     is_first_slide = (index == 1)
     has_explicit_title_type = (forced_type == "title")
 
-    if has_explicit_title_type or (is_first_slide and not raw_cards and not quote and not code_snippet):
+    if has_explicit_title_type or (is_first_slide and not raw_cards and not quote and not code_snippet and not table and not images):
         slide_type = SlideType.TITLE
     elif forced_type:
         try:
             slide_type = SlideType(forced_type)
         except ValueError:
             slide_type = SlideType.STANDARD
+    elif table:
+        slide_type = SlideType.TABLE
     elif code_snippet:
         slide_type = SlideType.CODE
     elif quote:
         slide_type = SlideType.DEFINITION
-    elif len(raw_cards) >= 1:
+    elif images and not raw_cards and not list_items and len(paragraphs) <= 1:
+        slide_type = SlideType.IMAGE
+    elif len(raw_cards) >= 1 and not images and (len(raw_cards) >= 2 or not list_items):
         slide_type = SlideType.CARDS
-    elif len(paragraphs) == 1 and not list_items and len(paragraphs[0]) > 80 and not ("http://" in paragraphs[0] or "https://" in paragraphs[0]):
+    elif len(paragraphs) == 1 and not list_items and not images and len(paragraphs[0]) > 80 and not ("http://" in paragraphs[0] or "https://" in paragraphs[0]):
         slide_type = SlideType.DEFINITION
     else:
         slide_type = SlideType.STANDARD
+
+    # If slide is not CARDS, re-integrate any raw_cards into list_items
+    if slide_type != SlideType.CARDS and raw_cards:
+        for c in raw_cards:
+            list_items.append(f"**{c.title}**: {c.description}" if c.description else c.title)
+        raw_cards = []
 
     # 6. Continuous card numbering
     cards = []
@@ -317,6 +331,15 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
                 else:
                     final_title = "Főbb témakörök"
 
+            elif slide_type == SlideType.TABLE:
+                final_title = "Összehasonlító táblázat"
+
+            elif slide_type == SlideType.IMAGE:
+                if images and images[0].alt:
+                    final_title = images[0].alt
+                else:
+                    final_title = "Illusztráció"
+
             elif slide_type == SlideType.CODE:
                 final_title = f"Kódrészlet ({code_snippet.get('language', 'code')})"
             else:
@@ -340,6 +363,8 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
         cards=cards,
         list_items=list_items,
         code_snippet=code_snippet,
+        table=table,
+        images=images,
         audio_filename=audio_filename,
         audio_path=audio_path,
         notes=notes,
@@ -348,7 +373,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
     return slide, next_counter
 
 
-def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
+def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, Any]:
     """
     Parses content lines into:
     - code_snippet: Optional[Dict[str, str]]
@@ -356,6 +381,8 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
     - cards: List[CardItem]
     - list_items: List[str]
     - paragraphs: List[str]
+    - table: Optional[TableData]
+    - images: List[ImageData]
     - author: Optional[str]
     """
     code_snippet = None
@@ -363,6 +390,8 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
     cards: List[CardItem] = []
     list_items: List[str] = []
     paragraphs: List[str] = []
+    table: Optional[TableData] = None
+    images: List[ImageData] = []
     detected_author: Optional[str] = None
 
     in_code_block = False
@@ -420,7 +449,48 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
             i += 1
             continue
 
-        # 4. Author line (e.g. Készítette: Jámbor Dorián)
+        # 4. Images: ![alt](src)
+        img_matches = list(IMAGE_RE.finditer(stripped))
+        if img_matches:
+            for im in img_matches:
+                alt = im.group("alt")
+                src = im.group("src").strip()
+                resolved = (source_dir / src).resolve() if (source_dir / src).exists() else None
+                images.append(ImageData(alt=alt, src=src, resolved_path=resolved))
+            # Check if line contains ONLY images
+            cleaned_line = IMAGE_RE.sub("", stripped).strip()
+            if not cleaned_line:
+                commit_para()
+                i += 1
+                continue
+            stripped = cleaned_line
+
+        # 5. Tables: header row contains '|' and next row is separator
+        if "|" in stripped and i + 1 < n and TABLE_SEP_RE.match(lines[i + 1].strip()):
+            commit_para()
+            raw_headers = [c.strip() for c in stripped.strip().strip("|").split("|")]
+            sep_parts = [c.strip() for c in lines[i + 1].strip().strip("|").split("|")]
+            alignments = []
+            for sp in sep_parts:
+                s = sp.strip()
+                if s.startswith(":") and s.endswith(":"):
+                    alignments.append("center")
+                elif s.endswith(":"):
+                    alignments.append("right")
+                else:
+                    alignments.append("left")
+            i += 2
+            rows = []
+            while i < n and lines[i].strip() and "|" in lines[i]:
+                row = [c.strip() for c in lines[i].strip().strip("|").split("|")]
+                while len(row) < len(raw_headers):
+                    row.append("")
+                rows.append(row[:len(raw_headers)])
+                i += 1
+            table = TableData(headers=raw_headers, rows=rows, alignments=alignments)
+            continue
+
+        # 6. Author line (e.g. Készítette: Jámbor Dorián)
         m_auth = AUTHOR_RE.match(stripped)
         if m_auth:
             commit_para()
@@ -428,7 +498,7 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
             i += 1
             continue
 
-        # 5. H2/H3 Card or Section Header (### Card Title or ## Section Title)
+        # 7. H2/H3 Card or Section Header (### Card Title or ## Section Title)
         if stripped.startswith("### ") or (stripped.startswith("## ") and not stripped.startswith("### ")):
             commit_para()
             card_title = strip_markdown(stripped.lstrip("#")).rstrip(":")
@@ -440,7 +510,7 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
             cards.append(CardItem(title=card_title, description="<br/>".join(body_lines)))
             continue
 
-        # 6. Definition List Pattern:
+        # 8. Definition List Pattern:
         # A term line followed by lines starting with ': '
         if i + 1 < n and lines[i + 1].strip().startswith(": "):
             commit_para()
@@ -453,11 +523,22 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
             cards.append(CardItem(title=term, description="<br/>".join(def_lines)))
             continue
 
-        # 7. Bullet items (standard bullets, cards with colon, or indented sub-properties)
+        # 9. Bullet items (standard bullets, task lists, cards with colon, or indented sub-properties)
         bullet_match = re.match(r"^(?:[-*•]|\d+\.)\s+(.*)", stripped)
         if bullet_match:
             commit_para()
             bullet_first_line = bullet_match.group(1).strip()
+
+            # Task list check: [x] or [ ]
+            task_match = re.match(r"^\[([ xX])\]\s+(.*)", bullet_first_line)
+            if task_match:
+                is_checked = task_match.group(1).lower() == "x"
+                task_text = task_match.group(2).strip()
+                tag = "[x] " if is_checked else "[ ] "
+                list_items.append(f"{tag}{task_text}")
+                i += 1
+                continue
+
             i += 1
             sub_lines = []
             # Gather indented lines belonging to this bullet
@@ -480,7 +561,7 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
                     list_items.append(bullet_first_line)
             continue
 
-        # 8. Single-line Term: Description card (e.g. 'Összehúzódás: vért pumpál az artériákba')
+        # 10. Single-line Term: Description card (e.g. 'Összehúzódás: vért pumpál az artériákba')
         colon_line_match = re.match(r"^([A-ZÁÉÍÓÖŐÚÜŰa-záéíóöőúüű0-9\s_–-]{2,35}):\s+(.+)$", stripped)
         if colon_line_match and not stripped.startswith(("- ", "* ", "• ", "http", "https")) and not stripped.lower().startswith(("források:", "forrás:", "megjegyzés:")):
             commit_para()
@@ -490,36 +571,33 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
             i += 1
             continue
 
-        # 9. Unbulleted Key-Value block (e.g. 'Artéria, verőér, ütőér:\nFeladata: ...')
-        # If line ends with ':' (or markdown stripped ends with ':') and next line is non-blank descriptive text
+        # 11. Unbulleted Key-Value block (e.g. 'Artéria, verőér, ütőér:\nFeladata: ...')
         clean_stripped = strip_markdown(stripped)
         if (stripped.endswith(":") or clean_stripped.endswith(":")) and len(clean_stripped) < 60 and not stripped.startswith("#"):
-            # Lookahead to see if next line is descriptive content
             next_idx = i + 1
             while next_idx < n and not lines[next_idx].strip():
                 next_idx += 1
             if next_idx < n:
                 next_s = lines[next_idx].strip()
-                if not next_s.startswith(("#", "---", "###")):
+                if not next_s.startswith(("#", "---", "###", "![", "<img", "- ", "* ", "• ", "|")):
                     commit_para()
                     term = clean_stripped.rstrip(":")
                     i = next_idx
                     desc_lines = []
-                    while i < n and lines[i].strip() and not lines[i].strip().endswith(":") and not strip_markdown(lines[i].strip()).endswith(":") and not lines[i].strip().startswith(("#", "---", "###", "- ", "* ", "• ")):
+                    while i < n and lines[i].strip() and not lines[i].strip().endswith(":") and not strip_markdown(lines[i].strip()).endswith(":") and not lines[i].strip().startswith(("#", "---", "###", "- ", "* ", "• ", "![", "<img", "|")):
                         desc_lines.append(lines[i].strip())
                         i += 1
                     cards.append(CardItem(title=term, description="<br/>".join(desc_lines)))
                     continue
 
-        # 10. Links and Sources list entries (e.g. URLs or lines starting with Források:)
+        # 12. Links and Sources list entries (e.g. URLs or lines starting with Források:)
         if "http://" in stripped or "https://" in stripped or stripped.lower().startswith(("források:", "forrás:", "sources:", "source:")):
             commit_para()
             list_items.append(stripped)
             i += 1
             continue
 
-        # 11. Standalone short items (Slide 8 style: Szívdobogásérzés, Extraszisztolé, Pitvarremegés)
-        # If separated by blank lines and length < 40 and not a sentence
+        # 13. Standalone short items (Slide 8 style: Szívdobogásérzés, Extraszisztolé, Pitvarremegés)
         if len(stripped) < 40 and not re.search(r"[.!?]$", stripped) and not stripped.startswith(("#", "---")):
             prev_blank = (i == 0 or not lines[i - 1].strip())
             next_blank = (i + 1 == n or not lines[i + 1].strip())
@@ -543,6 +621,8 @@ def _parse_content_structures(lines: List[str]) -> Dict[str, Any]:
         "cards": cards,
         "list_items": list_items,
         "paragraphs": paragraphs,
+        "table": table,
+        "images": images,
         "author": detected_author
     }
 

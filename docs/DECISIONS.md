@@ -156,3 +156,40 @@ Users authoring slide decks expect standard Markdown structures to work intuitiv
 - Preserves 100% backward compatibility with existing decks (`slideshow_1`).
 - Delivers visually stunning, structured card and code layouts in HTML, PPTX, and PDF with zero manual configuration.
 
+---
+
+## ADR-010: Tables, Images, and Extended Typographic Syntax Support
+
+### Context
+To achieve full parity with modern Markdown feature sets (e.g., Markdown Guide Cheat Sheet) while maintaining the Tri-Format Principle (HTML, PPTX, PDF) and Zero-Dependency standalone player requirements:
+1. **Tables**: Users need Markdown tables (`| Col 1 | Col 2 |`) with column alignment (`:---`, `:---:`, `---:`) rendered as native presentation tables across Web and PowerPoint.
+2. **Images**: Presentations require both standalone hero illustrations (`SlideType.IMAGE`) and split side-by-side layouts (`SlideType.STANDARD`) where text appears on the left and an image appears on the right. In the Web player, images must remain 100% portable and offline-capable without browser sandbox restrictions (`file:///`).
+3. **Extended Typography**: Users need task lists (`- [x]`, `- [ ]`), strikethrough (`~~text~~`), highlight (`==text==`), subscript (`~text~`), and superscript (`^text^`).
+
+### Decision
+1. **Data Models (`generator/models.py`)**:
+   - Introduced `TableData(headers: List[str], rows: List[List[str]], alignments: List[str])`.
+   - Introduced `ImageData(alt: str, src: str, resolved_path: Optional[Path])`.
+   - Added `SlideType.TABLE` and `SlideType.IMAGE`.
+   - Added `table: Optional[TableData]` and `images: List[ImageData]` fields to `SlideData`.
+2. **Lexer & Markdown Parser (`generator/markdown_utils.py`, `generator/parser.py`)**:
+   - Upgraded `TextRun` to a dataclass supporting `is_strike`, `is_highlight`, `is_sub`, `is_sup`, `is_link`, and `link_url` while retaining tuple unpack compatibility.
+   - Enhanced `render_markdown_html` to output `<del class="md-strike">`, `<mark class="md-highlight">`, `<sub>`, and `<sup>`.
+   - Enhanced `strip_markdown` to clean extended tokens for header shapes.
+   - Enhanced `_parse_content_structures` to parse markdown tables into `TableData` and images into `ImageData`.
+   - Added task list extraction (`- [x]`, `- [ ]`), tagging list items for checkbox rendering.
+3. **Standalone Web Player & PDF (`generator/renderers/html_renderer.py`)**:
+   - Automatic Base64 embedding of images (`data:image/...;base64,...`) into `dist/index.html`, eliminating `file:///` sandbox blocks and preserving offline portability.
+   - Styled `.slide-table`, `.task-item`, `.task-checkbox`, `.slide-hero-image`, and `.split-layout` across all 6 archetypes.
+4. **Native PowerPoint OpenXML Rendering (`generator/renderers/pptx_renderer.py`)**:
+   - Tables rendered via `slide.shapes.add_table()` with theme-aware fills, header styling, and column alignment.
+   - Images rendered via `slide.shapes.add_picture()` with aspect-ratio calculation via Pillow (`_add_picture_fit`) to prevent image distortion.
+   - Side-by-side split layout: when a content slide includes an image, text occupies the left half and the fitted picture occupies the right half.
+   - Low-level DrawingML OpenXML formatting for `sngStrike`, `<a:highlight>`, and baseline shift (`30000` / `-25000`) for superscript and subscript.
+   - Task list items formatted with native checkmark symbols (`☑` / `☐`).
+
+### Rationale
+- Maintains 100% Tri-Format parity across HTML, PPTX, and PDF.
+- Preserves the Zero-Dependency offline architecture for HTML and PDF exports.
+- Delivers native, editable PowerPoint tables and properly proportioned media assets.
+

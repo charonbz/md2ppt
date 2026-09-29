@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any
-from ..models import PresentationData, SlideData, SlideType, ThemeConfig
+from ..models import PresentationData, SlideData, SlideType, ThemeConfig, TableData
 from ..markdown_utils import render_markdown_html
 
 
@@ -19,9 +19,48 @@ def render_html_presentation(pres: PresentationData, theme: ThemeConfig, dist_di
             audio_info = _prepare_audio_asset(slide.audio_path, dist_dir)
             audio_assets[slide.index] = audio_info
 
-    html_content = _build_html(pres, theme, audio_assets)
+    # Prepare image assets (copy to dist/images, generate base64 data URIs)
+    image_assets: Dict[str, Dict[str, str]] = {}
+    for slide in pres.slides:
+        for img in slide.images:
+            if img.resolved_path and img.resolved_path.exists():
+                path_key = str(img.resolved_path.resolve())
+                if path_key not in image_assets:
+                    image_assets[path_key] = _prepare_image_asset(img.resolved_path, dist_dir)
+
+    html_content = _build_html(pres, theme, audio_assets, image_assets)
     html_file.write_text(html_content, encoding="utf-8")
     return html_file
+
+
+def _prepare_image_asset(src_path: Path, dist_dir: Path) -> Dict[str, str]:
+    """Ensures image is copied to dist/images/ and encoded as Base64 Data URI."""
+    images_dir = dist_dir / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = images_dir / src_path.name
+    if not dest_path.exists() or src_path.stat().st_mtime > dest_path.stat().st_mtime:
+        shutil.copy2(src_path, dest_path)
+
+    ext = src_path.suffix.lower()
+    mime_types = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".svg": "image/svg+xml",
+        ".webp": "image/webp",
+        ".bmp": "image/bmp",
+    }
+    mime_type = mime_types.get(ext, "image/png")
+    raw_bytes = src_path.read_bytes()
+    b64_str = base64.b64encode(raw_bytes).decode("ascii")
+    data_uri = f"data:{mime_type};base64,{b64_str}"
+
+    return {
+        "rel_path": f"images/{dest_path.name}",
+        "data_uri": data_uri,
+        "mime_type": mime_type
+    }
 
 
 def _prepare_audio_asset(src_path: Path, dist_dir: Path) -> Dict[str, str]:
@@ -66,13 +105,13 @@ def _prepare_audio_asset(src_path: Path, dist_dir: Path) -> Dict[str, str]:
     }
 
 
-def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[int, Dict[str, str]]) -> str:
+def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[int, Dict[str, str]], image_assets: Optional[Dict[str, Dict[str, str]]] = None) -> str:
     slides_html = []
     total_slides = len(pres.slides)
 
     for slide in pres.slides:
         audio_info = audio_assets.get(slide.index)
-        slides_html.append(_render_slide(slide, total_slides, theme, audio_info, deck_title=pres.title))
+        slides_html.append(_render_slide(slide, total_slides, theme, audio_info, deck_title=pres.title, image_assets=image_assets))
 
     slides_joined = "\n".join(slides_html)
 
@@ -343,6 +382,174 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       padding: 2px 6px;
       border-radius: 4px;
       font-size: 0.9em;
+    }}
+
+    del.md-strike {{
+      text-decoration: line-through;
+      opacity: 0.65;
+    }}
+
+    mark.md-highlight {{
+      background-color: #FEF08A;
+      color: #854D0E;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 600;
+    }}
+
+    sup {{
+      font-size: 0.72em;
+      vertical-align: super;
+      line-height: 0;
+    }}
+
+    sub {{
+      font-size: 0.72em;
+      vertical-align: sub;
+      line-height: 0;
+    }}
+
+    /* Table Layout */
+    .slide-table-container {{
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 8px;
+    }}
+
+    .slide-table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+      background: var(--card-bg);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      border: var(--border-width) solid var(--card-border);
+    }}
+
+    .slide-table th {{
+      background: var(--accent);
+      color: #FFFFFF;
+      font-weight: 700;
+      padding: 14px 20px;
+      text-transform: uppercase;
+      font-size: 0.85em;
+      letter-spacing: 0.05em;
+    }}
+
+    .slide-table td {{
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--card-border);
+      color: var(--primary-text);
+      line-height: 1.5;
+    }}
+
+    .slide-table tr:last-child td {{
+      border-bottom: none;
+    }}
+
+    .slide-table tr:nth-child(even) {{
+      background: rgba(125, 125, 125, 0.03);
+    }}
+
+    .slide-table th.align-left, .slide-table td.align-left {{ text-align: left; }}
+    .slide-table th.align-center, .slide-table td.align-center {{ text-align: center; }}
+    .slide-table th.align-right, .slide-table td.align-right {{ text-align: right; }}
+
+    /* Task Lists */
+    .task-list li::before {{
+      display: none !important;
+    }}
+
+    .task-list li {{
+      padding-left: 0 !important;
+    }}
+
+    .task-item {{
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+      line-height: 1.5;
+    }}
+
+    .task-checkbox {{
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      border: 2px solid var(--accent);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+      background: var(--card-bg);
+      font-size: 13px;
+      font-weight: bold;
+      color: transparent;
+    }}
+
+    .task-checkbox.checked {{
+      background: var(--accent);
+      color: #FFFFFF;
+    }}
+
+    /* Standalone Image Hero Layout */
+    .slide-image-container {{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 14px;
+    }}
+
+    .slide-hero-image {{
+      max-width: 100%;
+      max-height: 60vh;
+      object-fit: contain;
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
+      border: var(--border-width) solid var(--card-border);
+    }}
+
+    .image-caption {{
+      font-size: clamp(0.9rem, 1.3vw, 1.1rem);
+      color: var(--secondary-text);
+      font-style: italic;
+      text-align: center;
+    }}
+
+    /* Split Layout: Content + Image */
+    .split-layout {{
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: clamp(24px, 4vw, 48px);
+      align-items: center;
+      height: 100%;
+    }}
+
+    .split-layout-left {{
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }}
+
+    .split-layout-right {{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }}
+
+    .split-image {{
+      max-width: 100%;
+      max-height: 52vh;
+      object-fit: contain;
+      border-radius: var(--card-radius);
+      box-shadow: var(--card-shadow);
+      border: var(--border-width) solid var(--card-border);
     }}
 
     /* Standard Lists */
@@ -620,6 +827,28 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .archetype-editorial .definition-quote-icon {{
       display: none;
     }}
+    .archetype-editorial .slide-table {{
+      border: none !important;
+      box-shadow: none !important;
+      border-top: 2px solid var(--primary-text) !important;
+      border-bottom: 2px solid var(--primary-text) !important;
+      border-radius: 0 !important;
+    }}
+    .archetype-editorial .slide-table th {{
+      background: transparent !important;
+      color: var(--primary-text) !important;
+      border-bottom: 1px solid var(--card-border) !important;
+      font-family: Georgia, serif !important;
+    }}
+    .archetype-editorial .task-checkbox {{
+      border-radius: 2px !important;
+    }}
+    .archetype-editorial .split-image,
+    .archetype-editorial .slide-hero-image {{
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      border: 1px solid var(--card-border) !important;
+    }}
 
     /* 2. NEUBRUTALISM ARCHETYPE */
     .archetype-neubrutalism .info-card {{
@@ -661,6 +890,30 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .archetype-neubrutalism .slide-counter {{
       border: 2px solid #000000 !important;
       box-shadow: 2px 2px 0px #000000 !important;
+      border-radius: 2px !important;
+    }}
+    .archetype-neubrutalism .slide-table {{
+      border: 3px solid #000000 !important;
+      box-shadow: 6px 6px 0px #000000 !important;
+      border-radius: 2px !important;
+    }}
+    .archetype-neubrutalism .slide-table th {{
+      border-bottom: 3px solid #000000 !important;
+      color: #000000 !important;
+      background: var(--accent) !important;
+    }}
+    .archetype-neubrutalism .slide-table td {{
+      border-bottom: 2px solid #000000 !important;
+    }}
+    .archetype-neubrutalism .task-checkbox {{
+      border: 2px solid #000000 !important;
+      border-radius: 2px !important;
+      box-shadow: 2px 2px 0px #000000 !important;
+    }}
+    .archetype-neubrutalism .split-image,
+    .archetype-neubrutalism .slide-hero-image {{
+      border: 3px solid #000000 !important;
+      box-shadow: 6px 6px 0px #000000 !important;
       border-radius: 2px !important;
     }}
 
@@ -710,6 +963,24 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       border-left: 6px solid var(--accent) !important;
       border-radius: 4px !important;
       background: var(--card-bg) !important;
+    }}
+    .archetype-terminal .slide-table {{
+      border: 1px solid var(--accent) !important;
+      box-shadow: 0 0 16px rgba(46, 160, 67, 0.12) !important;
+    }}
+    .archetype-terminal .slide-table th {{
+      background: rgba(46, 160, 67, 0.2) !important;
+      color: var(--accent) !important;
+      border-bottom: 1px solid var(--accent) !important;
+    }}
+    .archetype-terminal .task-checkbox {{
+      border-color: var(--accent) !important;
+      border-radius: 2px !important;
+    }}
+    .archetype-terminal .split-image,
+    .archetype-terminal .slide-hero-image {{
+      border: 1px solid var(--accent) !important;
+      border-radius: 2px !important;
     }}
 
     /* 4. SWISS MINIMAL ARCHETYPE */
@@ -994,7 +1265,35 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 </html>"""
 
 
-def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio_info: Optional[Dict[str, str]] = None, deck_title: str = "") -> str:
+def _render_table_html(table: TableData) -> str:
+    ths = []
+    for i, h in enumerate(table.headers):
+        align = table.alignments[i] if i < len(table.alignments) else "left"
+        ths.append(f'<th class="align-{align}">{render_markdown_html(h)}</th>')
+    th_row = "".join(ths)
+
+    tbody_rows = []
+    for row in table.rows:
+        tds = []
+        for i, cell in enumerate(row):
+            align = table.alignments[i] if i < len(table.alignments) else "left"
+            tds.append(f'<td class="align-{align}">{render_markdown_html(cell)}</td>')
+        tbody_rows.append(f'<tr>{"".join(tds)}</tr>')
+    tbody = "\n        ".join(tbody_rows)
+
+    return f"""<div class="slide-table-container">
+      <table class="slide-table">
+        <thead><tr>{th_row}</tr></thead>
+        <tbody>
+          {tbody}
+        </tbody>
+      </table>
+    </div>"""
+
+
+def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
+                  audio_info: Optional[Dict[str, str]] = None, deck_title: str = "",
+                  image_assets: Optional[Dict[str, Dict[str, str]]] = None) -> str:
     audio_widget_html = ""
     audio_tag_html = ""
 
@@ -1078,6 +1377,68 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio
         </div>
         """
 
+    elif slide.slide_type == SlideType.TABLE:
+        table_html = _render_table_html(slide.table) if slide.table else ""
+        intro_html = ""
+        if slide.paragraphs:
+            intro_html = f'<p class="slide-intro" style="margin-bottom: 18px; font-size: clamp(1.05rem, 1.5vw, 1.25rem); color: var(--secondary-text);">{render_markdown_html(slide.paragraphs[0])}</p>'
+        heading_title = render_markdown_html(slide.title)
+        return f"""
+        <div class="slide" id="slide-{slide.index}">
+          {audio_tag_html}
+          <div class="slide-header">
+            <div class="header-left">
+              <span class="slide-category">{cat_label}</span>
+              <h2 class="slide-heading">{heading_title}</h2>
+            </div>
+            {audio_widget_html}
+          </div>
+          <div class="slide-content">
+            {intro_html}
+            {table_html}
+          </div>
+        </div>
+        """
+
+    elif slide.slide_type == SlideType.IMAGE:
+        heading_title = render_markdown_html(slide.title)
+        img = slide.images[0] if slide.images else None
+        img_src = ""
+        alt_text = ""
+        if img:
+            alt_text = html.escape(img.alt)
+            if img.resolved_path:
+                path_key = str(img.resolved_path.resolve())
+                if image_assets and path_key in image_assets:
+                    img_src = image_assets[path_key]["data_uri"]
+            if not img_src:
+                img_src = img.src
+
+        caption_html = f'<p class="image-caption">{alt_text}</p>' if alt_text else ""
+        intro_html = ""
+        if slide.paragraphs:
+            intro_html = f'<p style="margin-bottom: 14px; font-size: clamp(1.05rem, 1.5vw, 1.25rem); color: var(--secondary-text); text-align: center;">{render_markdown_html(slide.paragraphs[0])}</p>'
+
+        return f"""
+        <div class="slide" id="slide-{slide.index}">
+          {audio_tag_html}
+          <div class="slide-header">
+            <div class="header-left">
+              <span class="slide-category">{cat_label}</span>
+              <h2 class="slide-heading">{heading_title}</h2>
+            </div>
+            {audio_widget_html}
+          </div>
+          <div class="slide-content">
+            <div class="slide-image-container">
+              {intro_html}
+              <img class="slide-hero-image" src="{img_src}" alt="{alt_text}" />
+              {caption_html}
+            </div>
+          </div>
+        </div>
+        """
+
     elif slide.slide_type == SlideType.CARDS:
         cards_html = []
         for card in slide.cards:
@@ -1153,10 +1514,54 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio
         paras_html = "".join(f"<p style='margin-bottom:16px; font-size:clamp(1.1rem, 1.6vw, 1.35rem); line-height:1.6;'>{render_markdown_html(p)}</p>" for p in slide.paragraphs)
         lists_html = ""
         if slide.list_items:
-            items_str = "".join(f"<li>{render_markdown_html(item)}</li>" for item in slide.list_items)
-            lists_html = f"<ul class='content-list'>{items_str}</ul>"
+            items_rendered = []
+            has_task = any(item.startswith(("[x] ", "[ ] ")) for item in slide.list_items)
+            for item in slide.list_items:
+                if item.startswith(("[x] ", "[ ] ")):
+                    checked = item.startswith("[x] ")
+                    item_text = item[4:]
+                    check_symbol = "✓" if checked else ""
+                    checked_cls = "checked" if checked else ""
+                    items_rendered.append(
+                        f'<li class="task-item"><span class="task-checkbox {checked_cls}">{check_symbol}</span><span>{render_markdown_html(item_text)}</span></li>'
+                    )
+                else:
+                    items_rendered.append(f"<li>{render_markdown_html(item)}</li>")
+            list_class = "content-list task-list" if has_task else "content-list"
+            lists_html = f"<ul class='{list_class}'>{''.join(items_rendered)}</ul>"
 
         heading_title = render_markdown_html(slide.title)
+
+        if slide.images:
+            img = slide.images[0]
+            img_src = ""
+            alt_text = html.escape(img.alt)
+            if img.resolved_path:
+                path_key = str(img.resolved_path.resolve())
+                if image_assets and path_key in image_assets:
+                    img_src = image_assets[path_key]["data_uri"]
+            if not img_src:
+                img_src = img.src
+            caption_html = f'<p class="image-caption">{alt_text}</p>' if alt_text else ""
+
+            body_content = f"""
+            <div class="split-layout">
+              <div class="split-layout-left">
+                {paras_html}
+                {lists_html}
+              </div>
+              <div class="split-layout-right">
+                <img class="split-image" src="{img_src}" alt="{alt_text}" />
+                {caption_html}
+              </div>
+            </div>
+            """
+        else:
+            body_content = f"""
+            {paras_html}
+            {lists_html}
+            """
+
         return f"""
         <div class="slide" id="slide-{slide.index}">
           {audio_tag_html}
@@ -1168,8 +1573,7 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio
             {audio_widget_html}
           </div>
           <div class="slide-content">
-            {paras_html}
-            {lists_html}
+            {body_content}
           </div>
         </div>
         """

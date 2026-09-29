@@ -48,6 +48,9 @@ The generator translates standard Markdown text into visually rich presentation 
 | `Term:`<br/>`: Definition line 1`<br/>`: Definition line 2` | `CardItem` | **Definition Card Box** | Standard Markdown definition list rendered into visual cards. |
 | `- Term:`<br/>`  **Prop**: Value` | `CardItem` | **Property Card Box** | Indented multi-line bullets converted into card containers. |
 | `- Title: Description`<br/>`Title: Description` | `CardItem` | **Key-Value Card Box** | Single-line colon syntax parsed into structured cards. |
+| `| Col 1 | Col 2 |`<br/>`| :--- | :---: |` | `TableData` | **Table Slide** (`SlideType.TABLE`) | Formatted table with text alignments (left/center/right) across HTML, PPTX, and PDF. |
+| `![Alt Text](path.png)` | `ImageData` | **Hero Image / Split Layout** | Standalone hero slide (`SlideType.IMAGE`) or split side-by-side layout alongside text. |
+| `- [x] Done`<br/>`- [ ] Pending` | Task list token | **Task List** | Custom styled checkboxes (HTML) and checkmark bullets `☑` / `☐` (PPTX). |
 | `> Quote or definition` | `slide.quote` | **Definition Slide** | Large decorative quotation card (`“`) with accent left border. |
 | ```` ```python ````<br/>`def code():...`<br/>```` ``` ```` | `slide.code_snippet` | **Code Block Slide** | Dark IDE container with monospace code font and language badge. |
 | `- Item`<br/>`* Item`<br/>`1. Item` | `slide.list_items` | **Styled Content List** | Clean bullet list with colored circular bullet points. |
@@ -55,11 +58,15 @@ The generator translates standard Markdown text into visually rich presentation 
 | `Készítette: Név`<br/>`Author: Name` | `slide.author` | **Author Line** | Presenter credit with left decorative accent bar. |
 | `**bold**` or `__bold__` | Bold token | **Bold Text** | `<strong>` in HTML; native `run.font.bold` in PowerPoint. |
 | `*italic*` or `_italic_` | Italic token | **Italic Text** | `<em>` in HTML; native `run.font.italic` in PowerPoint. |
+| `~~strikethrough~~` | Strike token | **Strikethrough** | `<del>` in HTML; native OpenXML `sngStrike` in PowerPoint. |
+| `==highlight==` | Highlight token | **Highlighted Text** | `<mark>` in HTML; native DrawingML `<a:highlight>` in PowerPoint. |
+| `^superscript^` | Sup token | **Superscript** | `<sup>` in HTML; native `30000` baseline shift in PowerPoint. |
+| `~subscript~` | Sub token | **Subscript** | `<sub>` in HTML; native `-25000` baseline shift in PowerPoint. |
 | `` `code` `` | Code chip | **Inline Code Pill** | Rounded chip in HTML; Consolas monospace run in PowerPoint. |
 | `[link](url)` or raw `https://...` | Link token | **Clickable Link** | `<a href>` in HTML; labeled hyperlink in PowerPoint. |
 | `<!-- audio: file.m4a -->` | `slide.audio_filename` | **Audio Widget** | Base64 standalone player in HTML; native audio shape in PPTX. |
 | `<!-- notes: ... -->` | `slide.notes` | **Speaker Notes** | Presenter notes available during delivery. |
-| `<!-- type: ... -->` | `slide.slide_type` | **Layout Override** | Explicitly forces `title`, `cards`, `definition`, `code`, or `standard`. |
+| `<!-- type: ... -->` | `slide.slide_type` | **Layout Override** | Explicitly forces `title`, `cards`, `definition`, `code`, `table`, `image`, or `standard`. |
 
 ---
 
@@ -127,7 +134,56 @@ def generate_slides(markdown_path: str) -> None:
 ```
 ````
 
-#### 5. Standard List Slide (`SlideType.STANDARD`)
+#### 5. Markdown Tables Slide (`SlideType.TABLE`)
+Markdown tables with header rows, column alignment (`:---`, `:---:`, `---:`), and zebra striping:
+```markdown
+---
+## Formátum-összehasonlítás
+
+| Formátum | Motor / Technológia | Hangkíséret | Függőségmentes |
+| :--- | :---: | :---: | ---: |
+| HTML5 Player | Natív ES6 + Web Audio | Base64 MP3 | 100% Önálló |
+| PowerPoint (.pptx) | OpenXML / python-pptx | Beágyazott média | Szerkeszthető |
+| Vektoros PDF | Headless Chromium (16:9) | Nem releváns | Nyomtatható |
+```
+
+#### 6. Image Slides (Hero & Split-Screen) (`SlideType.IMAGE` / `SlideType.STANDARD`)
+Images are automatically embedded as Base64 data URIs in HTML and scaled natively in PowerPoint preserving aspect ratio:
+```markdown
+---
+## Rendszerarchitektúra Áttekintés
+
+![Tri-Format Architektúra Diagram](architecture.png)
+```
+
+*Split layout (text on left, illustration on right):*
+```markdown
+---
+## Tervezési Alapelvek
+
+A generátor szigorú specifikáció szerint működik:
+- **Tri-Format paritás**: Minden megjelenítési forma azonos élményt ad.
+- *Gyors fordítás*: Pár másodperc alatt elkészül az összes kimenet.
+
+![Moduláris Felépítés](architecture.png)
+```
+
+#### 7. Task Lists & Typographic Extensions
+Task list checkboxes and extended typography (strikethrough, highlight, sub/superscript):
+```markdown
+---
+## Feladatlista és Rendszerstátusz
+
+A rendszer támogatja a legújabb tipográfiai elemeket:
+- ~~Elavult monolitikus felépítés~~ helyett modern moduláris motor
+- ==Kiemelt fontosságú== fókuszpontok
+- Kémiai jelölések: H~2~O és hatványok: E = mc^2^
+- [x] Tri-Format paritás biztosítása (HTML, PPTX, PDF)
+- [x] Képek és táblázatok natív renderelése
+- [ ] További témasablonok készítése
+```
+
+#### 8. Standard List Slide (`SlideType.STANDARD`)
 Plain bullets, numbered items, and sources:
 ```markdown
 ---
