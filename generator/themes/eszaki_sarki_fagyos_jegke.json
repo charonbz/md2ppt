@@ -1,0 +1,28 @@
+{
+  "id": "eszaki_sarki_fagyos_jegke",
+  "name": "Nordic Ice (Északi sarki fagyos jégkék min)",
+  "description": "AI által generált skandináv minimalista stílus: Északi sarki fagyos jégkék minimalizmus",
+  "colors": {
+    "background": "#F0F4F8",
+    "card_bg": "#FFFFFF",
+    "card_border": "#CBD5E1",
+    "primary_text": "#1E293B",
+    "secondary_text": "#475569",
+    "accent": "#0284C7",
+    "accent_light": "#E0F2FE",
+    "badge_bg": "#E2E8F0",
+    "badge_text": "#0F172A",
+    "audio_btn_bg": "#0284C7",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "system-ui, -apple-system, sans-serif",
+    "body_font": "system-ui, -apple-system, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 14,
+    "card_shadow": "0 6px 18px rgba(30, 41, 59, 0.05)",
+    "title_align": "left",
+    "border_width_px": 1
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PresentationThemeConfig",
+  "type": "object",
+  "required": ["id", "name", "colors", "fonts"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique theme identifier (e.g. modern_clean)"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human readable name of the theme"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of the visual style"
+    },
+    "colors": {
+      "type": "object",
+      "required": ["background", "card_bg", "primary_text", "secondary_text", "accent"],
+      "properties": {
+        "background": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "card_bg": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "card_border": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "primary_text": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "secondary_text": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "accent": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "accent_light": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "badge_bg": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "badge_text": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "audio_btn_bg": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "audio_btn_text": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+      }
+    },
+    "fonts": {
+      "type": "object",
+      "required": ["title_font", "body_font"],
+      "properties": {
+        "title_font": { "type": "string" },
+        "body_font": { "type": "string" }
+      }
+    },
+    "styles": {
+      "type": "object",
+      "properties": {
+        "card_radius_px": { "type": "integer" },
+        "card_shadow": { "type": "string" },
+        "title_align": { "type": "string", "enum": ["left", "center"] },
+        "border_width_px": { "type": "integer" }
+      }
+    }
+  }
+}

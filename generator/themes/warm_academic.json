@@ -1,0 +1,28 @@
+{
+  "id": "warm_academic",
+  "name": "Warm Academic (Akadémiai)",
+  "description": "Meleg krémszínű háttér elegáns bordó akcentussal és serif címekkel.",
+  "colors": {
+    "background": "#FDFBF7",
+    "card_bg": "#FFFFFF",
+    "card_border": "#EADBCE",
+    "primary_text": "#292524",
+    "secondary_text": "#57534E",
+    "accent": "#991B1B",
+    "accent_light": "#FEF2F2",
+    "badge_bg": "#FEE2E2",
+    "badge_text": "#7F1D1D",
+    "audio_btn_bg": "#991B1B",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "Georgia, 'Times New Roman', serif",
+    "body_font": "system-ui, -apple-system, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 12,
+    "card_shadow": "0 8px 20px -4px rgba(120, 53, 15, 0.06)",
+    "title_align": "left",
+    "border_width_px": 1
+  }
+}

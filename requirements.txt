@@ -1,0 +1,4 @@
+python-pptx>=1.0.0
+pillow>=10.0.0
+lxml>=4.9.0
+typing-extensions>=4.9.0

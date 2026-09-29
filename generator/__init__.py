@@ -1,0 +1,1 @@
+"""Slideshow Generator package"""

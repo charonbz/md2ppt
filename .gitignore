@@ -1,0 +1,14 @@
+# Virtual Environment & Python cache
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Output distributions (dist folders)
+dist/
+**/dist/
+
+# OS / Temporary files
+.DS_Store
+/tmp/
+*.log

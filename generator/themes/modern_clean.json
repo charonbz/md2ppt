@@ -1,0 +1,28 @@
+{
+  "id": "modern_clean",
+  "name": "Modern Clean (Világos & Letisztult)",
+  "description": "Professzionális, modern világos stílus elegáns kék hangsúlyszínekkel és finom árnyékokkal.",
+  "colors": {
+    "background": "#F8FAFC",
+    "card_bg": "#FFFFFF",
+    "card_border": "#E2E8F0",
+    "primary_text": "#0F172A",
+    "secondary_text": "#475569",
+    "accent": "#2563EB",
+    "accent_light": "#EFF6FF",
+    "badge_bg": "#DBEAFE",
+    "badge_text": "#1E40AF",
+    "audio_btn_bg": "#2563EB",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    "body_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 16,
+    "card_shadow": "0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)",
+    "title_align": "left",
+    "border_width_px": 1
+  }
+}

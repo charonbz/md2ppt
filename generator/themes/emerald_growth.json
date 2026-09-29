@@ -1,0 +1,28 @@
+{
+  "id": "emerald_growth",
+  "name": "Emerald Growth (Természetes Zöld)",
+  "description": "Friss, természetes smaragdzöld stílus tiszta fehér kártyákkal és modern tipográfiával.",
+  "colors": {
+    "background": "#F0FDF4",
+    "card_bg": "#FFFFFF",
+    "card_border": "#DCFCE7",
+    "primary_text": "#064E3B",
+    "secondary_text": "#166534",
+    "accent": "#059669",
+    "accent_light": "#ECFDF5",
+    "badge_bg": "#D1FAE5",
+    "badge_text": "#065F46",
+    "audio_btn_bg": "#059669",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    "body_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 16,
+    "card_shadow": "0 10px 25px -5px rgba(5, 150, 105, 0.08)",
+    "title_align": "left",
+    "border_width_px": 1
+  }
+}

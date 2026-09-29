@@ -1,0 +1,28 @@
+{
+  "id": "dark_mode",
+  "name": "Dark Mode (Modern Sötét)",
+  "description": "Prémium sötétszürke háttér világos kontrasztos betűkkel és indigókék hangsúlyokkal.",
+  "colors": {
+    "background": "#0F172A",
+    "card_bg": "#1E293B",
+    "card_border": "#334155",
+    "primary_text": "#F8FAFC",
+    "secondary_text": "#94A3B8",
+    "accent": "#6366F1",
+    "accent_light": "#1E1B4B",
+    "badge_bg": "#312E81",
+    "badge_text": "#C7D2FE",
+    "audio_btn_bg": "#6366F1",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    "body_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 16,
+    "card_shadow": "0 10px 25px -5px rgba(0, 0, 0, 0.4)",
+    "title_align": "left",
+    "border_width_px": 1
+  }
+}
