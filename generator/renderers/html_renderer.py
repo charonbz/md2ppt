@@ -75,7 +75,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     slides_joined = "\n".join(slides_html)
 
     return f"""<!DOCTYPE html>
-<html lang="hu">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -509,10 +509,10 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     <div id="nav-footer">
       <div class="nav-controls">
-        <button id="btn-prev" class="nav-btn" type="button" title="Előző dia (Balra nyíl)">
+        <button id="btn-prev" class="nav-btn" type="button" title="Previous slide (Left arrow)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
-        <button id="btn-next" class="nav-btn" type="button" title="Következő dia (Jobbra nyíl / Szóköz)">
+        <button id="btn-next" class="nav-btn" type="button" title="Next slide (Right arrow / Space)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
@@ -541,7 +541,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       if (currentPlayingWidget) {{
         currentPlayingWidget.classList.remove('audio-playing');
         const status = currentPlayingWidget.querySelector('.audio-label-status');
-        if (status) status.textContent = 'Kattints az indításhoz';
+        if (status) status.textContent = 'Click to play';
         const icon = currentPlayingWidget.querySelector('.audio-play-btn');
         if (icon) icon.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>';
       }}
@@ -608,27 +608,27 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
         playBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>';
         const dur = formatTime(audio.duration);
         const cur = formatTime(audio.currentTime);
-        statusLabel.textContent = 'Lejátszás (' + cur + ' / ' + dur + ')';
+        statusLabel.textContent = 'Playing (' + cur + ' / ' + dur + ')';
       }}
 
       function updatePausedUI() {{
         widget.classList.remove('audio-playing');
         playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>';
-        statusLabel.textContent = 'Szüneteltetve';
+        statusLabel.textContent = 'Paused';
       }}
 
       audio.addEventListener('timeupdate', () => {{
         if (!audio.paused && currentPlayingAudio === audio) {{
           const dur = formatTime(audio.duration);
           const cur = formatTime(audio.currentTime);
-          statusLabel.textContent = 'Lejátszás (' + cur + ' / ' + dur + ')';
+          statusLabel.textContent = 'Playing (' + cur + ' / ' + dur + ')';
         }}
       }});
 
       audio.addEventListener('ended', () => {{
         widget.classList.remove('audio-playing');
         playBtn.innerHTML = '<svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>';
-        statusLabel.textContent = 'Befejezve (Újraindítás)';
+        statusLabel.textContent = 'Completed (Replay)';
         currentPlayingAudio = null;
         currentPlayingWidget = null;
       }});
@@ -637,14 +637,14 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
         const err = audio.error;
         console.error('Audio load error:', err);
         widget.classList.remove('audio-playing');
-        let msg = 'Betöltési hiba';
+        let msg = 'Load error';
         if (err) {{
-          if (err.code === 4) msg = 'Formátum hiba (kodek)';
-          else if (err.code === 3) msg = 'Dekódolási hiba';
-          else if (err.code === 2) msg = 'Hálózati hiba';
-          else if (err.code === 1) msg = 'Megszakítva';
+          if (err.code === 4) msg = 'Format error (codec)';
+          else if (err.code === 3) msg = 'Decoding error';
+          else if (err.code === 2) msg = 'Network error';
+          else if (err.code === 1) msg = 'Aborted';
         }}
-        statusLabel.textContent = 'Hiba: ' + msg;
+        statusLabel.textContent = 'Error: ' + msg;
       }});
 
       widget.addEventListener('click', (e) => {{
@@ -666,7 +666,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
           }}).catch(err => {{
             console.error('Audio play rejection:', err);
             widget.classList.remove('audio-playing');
-            statusLabel.textContent = 'Hiba: ' + (err.name || 'Nem indítható');
+            statusLabel.textContent = 'Error: ' + (err.name || 'Playback failed');
           }});
         }}
       }});
@@ -686,13 +686,13 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio
     if audio_info:
         audio_id = f"audio-slide-{slide.index}"
         audio_widget_html = f"""
-        <div class="audio-widget" data-audio-id="{audio_id}" title="Hangfelvétel lejátszása">
-          <button class="audio-play-btn" type="button" aria-label="Lejátszás">
+        <div class="audio-widget" data-audio-id="{audio_id}" title="Play slide narration">
+          <button class="audio-play-btn" type="button" aria-label="Play narration">
             <svg viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
           </button>
           <div class="audio-label">
-            <span class="audio-label-title">Narráció</span>
-            <span class="audio-label-status">Kattints az indításhoz</span>
+            <span class="audio-label-title">Narration</span>
+            <span class="audio-label-status">Click to play</span>
           </div>
           <div class="audio-waves">
             <div class="wave-bar"></div>

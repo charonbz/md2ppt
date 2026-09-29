@@ -1,7 +1,7 @@
 {
   "id": "dark_mode",
-  "name": "Dark Mode (Modern Sötét)",
-  "description": "Prémium sötétszürke háttér világos kontrasztos betűkkel és indigókék hangsúlyokkal.",
+  "name": "Dark Mode (Modern Slate)",
+  "description": "Premium dark slate aesthetic with high-contrast text and indigo accents.",
   "colors": {
     "background": "#0F172A",
     "card_bg": "#1E293B",

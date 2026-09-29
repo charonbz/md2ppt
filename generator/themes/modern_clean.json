@@ -1,7 +1,7 @@
 {
   "id": "modern_clean",
-  "name": "Modern Clean (Világos & Letisztult)",
-  "description": "Professzionális, modern világos stílus elegáns kék hangsúlyszínekkel és finom árnyékokkal.",
+  "name": "Modern Clean (Light & Crisp)",
+  "description": "Professional modern light theme with crisp blue accents and soft shadows.",
   "colors": {
     "background": "#F8FAFC",
     "card_bg": "#FFFFFF",

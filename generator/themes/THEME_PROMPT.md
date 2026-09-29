@@ -1,35 +1,35 @@
-# AI Téma-generáló Útmutató (AI Theme Generator Prompt)
+# AI Theme Generator Guide & Prompt Template
 
-Ha új prezentációs stílust szeretnél készíteni bármilyen AI-val (pl. Antigravity chatben, Claude-ban vagy ChatGPT-ben), másold be az alábbi prompt sablont, és egészítsd ki a saját stílusigényeiddel:
+To generate a new presentation theme using any AI (Antigravity chat, Claude, ChatGPT, Gemini), copy and customize the prompt template below:
 
 ---
 
 ```markdown
-Készíts egy új témát a slideshowGenerator rendszerhez az alábbi JSON formátumban!
-Téma elképzelés: [Írd ide a kívánt hangulatot, pl.: "Skandináv minimalizmus, fagyos kék és pala-szürke színekkel" vagy "Futurisztikus neon cyberpunk sötét háttérrel"].
+Create a new presentation theme for the slideshowGenerator system conforming to the following JSON schema.
+Desired theme aesthetic: [Enter your description here, e.g., "Nordic minimalism with icy blue and slate gray tones" or "Természetközeli zöld és fehér kártyás stílus"].
 
-A válaszban KIZÁRÓLAG egy érvényes JSON blokkot adj meg az alábbi séma szerint:
+Your response must contain ONLY a single valid JSON code block conforming to this schema:
 
 {
-  "id": "egyedi_azonosito_kisbetuvel_aláhúzással",
-  "name": "Emberileg olvasható név",
-  "description": "Rövid leírás a stílusról",
+  "id": "unique_theme_id_snake_case",
+  "name": "Human-Readable Name",
+  "description": "Short description of the theme aesthetic",
   "colors": {
-    "background": "#HEX háttérszín",
-    "card_bg": "#HEX kártya háttér",
-    "card_border": "#HEX kártya szegély",
-    "primary_text": "#HEX fő szövegszín (erős kontraszt a card_bg-hez)",
-    "secondary_text": "#HEX másodlagos szövegszín",
-    "accent": "#HEX kiemelő szín (gombok, címkék, ikonok)",
-    "accent_light": "#HEX nagyon világos / áttetsző akcentusszín",
-    "badge_bg": "#HEX kategória jelvény háttérszín",
-    "badge_text": "#HEX kategória jelvény szövegszín",
-    "audio_btn_bg": "#HEX audio lejátszó gomb háttérszín",
-    "audio_btn_text": "#HEX audio lejátszó gomb szöveg/ikonszín"
+    "background": "#HEX background color",
+    "card_bg": "#HEX card background",
+    "card_border": "#HEX card border",
+    "primary_text": "#HEX primary text color (high contrast against card_bg)",
+    "secondary_text": "#HEX secondary text color",
+    "accent": "#HEX accent color (buttons, badges, highlights)",
+    "accent_light": "#HEX soft/light accent color",
+    "badge_bg": "#HEX category badge background",
+    "badge_text": "#HEX category badge text color",
+    "audio_btn_bg": "#HEX audio player button background",
+    "audio_btn_text": "#HEX audio player button icon color"
   },
   "fonts": {
-    "title_font": "Betűtípus a címekhez (pl. system-ui, Georgia, Montserrat, stb.)",
-    "body_font": "Betűtípus a folyószöveghez (pl. system-ui, Roboto, Open Sans)"
+    "title_font": "Font family for headings (e.g. system-ui, Georgia, Montserrat)",
+    "body_font": "Font family for body text (e.g. system-ui, Roboto, Open Sans)"
   },
   "styles": {
     "card_radius_px": 16,
@@ -40,4 +40,4 @@ A válaszban KIZÁRÓLAG egy érvényes JSON blokkot adj meg az alábbi séma sz
 }
 ```
 
-A kapott JSON fájlt mentsd el a `generator/themes/<id>.json` néven, és a generátor azonnal használni tudja a `--theme <id>` paraméterrel!
+Save the generated JSON file as `generator/themes/<id>.json`. The generator will immediately detect it and allow usage via `--theme <id>`.

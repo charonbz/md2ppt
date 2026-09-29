@@ -1,41 +1,41 @@
 # Slideshow Generator 🎬🎙️
 
-Professzionális prezentációgeneráló motor, amely Markdown vázlatokból és csatolt hangfájlokból automatikusan előállítja a prezentációt három különböző formátumban:
-1. **PowerPoint (.pptx)**: 16:9 arányú prezentáció, beágyazott natív médiaobjektummal (kattintásra induló hangfelvétellel).
-2. **Interaktív Webes diavetítő (.html)**: Bármilyen böngészőben futó, reszponzív HTML5 lejátszó modern kártyás elrendezéssel, billentyűzet-vezérléssel és diszkrét lejátszó/szüneteltető hangvezérlővel.
-3. **Vektoros PDF (.pdf)**: Pixelpontos, 16:9 képarányú, nyomtatható és prezentálható PDF változat.
+A presentation generation platform that transforms Markdown outlines and attached audio recordings into presentations across three first-class formats:
+1. **PowerPoint (.pptx)**: 16:9 widescreen presentation with native embedded media objects (click-to-play narration).
+2. **Interactive Web Presentation (.html)**: Zero-dependency, responsive HTML5 player with card-based layouts, keyboard navigation, and embedded Base64 audio with real-time playback tracking.
+3. **Vector PDF (.pdf)**: Pixel-perfect, 16:9 widescreen printable and presentable vector PDF.
 
 ---
 
-## 🚀 Gyorsindítás
+## 🚀 Quickstart
 
-A generátor önállóan kezeli a virtuális környezetet (`.venv`), így közvetlenül futtatható:
+The generator automatically manages its Python virtual environment (`.venv`), so it can be executed directly:
 
 ```bash
-# Slideshow-1 legenerálása az alapértelmezett (modern_clean) stílussal:
+# Generate slideshow_1 using the default (modern_clean) theme:
 ./run.py slideshow_1
 
-# Másik témával történő generálás:
+# Generate using an alternative theme:
 ./run.py slideshow_1 --theme dark_mode
 
-# Csak adott formátumok készítése (pl. csak PPTX és PDF):
+# Generate only specific formats (e.g., PPTX and PDF only):
 ./run.py slideshow_1 --format pptx,pdf
 
-# Az elkészült prezentáció megtekintése beépített webszerverrel:
+# View the generated presentation with the built-in web server:
 ./run.py slideshow_1 --serve 8080
 ```
 
-A generált fájlok a diasor forrásmappáján belüli `dist/` almappába kerülnek:
+The output artifacts are written to the `dist/` subfolder inside the slideshow directory:
 * `slideshow_1/dist/presentation.pptx`
 * `slideshow_1/dist/index.html`
 * `slideshow_1/dist/presentation.pdf`
-* `slideshow_1/dist/slide_title.m4a` (önálló lejátszáshoz kimásolva)
+* `slideshow_1/dist/slide_title.m4a` & `slide_title.mp3`
 
 ---
 
-## 📝 A Diasor Formátuma (`slides.md`)
+## 📝 Slide Markdown Format (`slides.md`)
 
-A diák elválasztása `# Title`, `# Slide` vagy `---` sorokkal történik. A hangfájlokat egyszerű HTML megjegyzéssel tudod hozzárendelni az adott diához:
+Slides are separated by `# Title`, `# Slide`, or `---` horizontal rules. Audio tracks are associated using HTML comments:
 
 ```markdown
 # Title
@@ -54,46 +54,47 @@ A mérés a matematikai ismereteket négy átfogó kategóriába csoportosítja:
 - Változás és összefüggések (Change and relationships): függvények, modellezés...
 ```
 
-* **Címdia**: Automatikusan felismeri a címet és az előadót.
-* **Definíciós dia**: A hosszabb folyószövegeket elegáns, kiemelt definíciós kártyaként jeleníti meg.
-* **Kártyás dia**: A `- Név: Leírás` pontokat modern információs kártyákká és számozott jelvényekké alakítja.
+* **Title Slide**: Automatically detects title, subtitle, and author.
+* **Definition Slide**: Formats continuous descriptive text as an elegant, highlighted definition card.
+* **Card Slide**: Formats `- Title: Description` bullets into modern cards with numbered badges (`01`, `02`, `03`, `04`).
+* **Multilingual Content**: Slides can be written in Hungarian or any other language with full UTF-8 support.
 
 ---
 
-## 🎨 Moduláris Stílusok (Themes) és AI Témagenerálás
+## 🎨 Modular Themes & AI Theme Generation
 
-A prezentációk vizuális világa teljesen független a tartalomtól. A stílusok a `generator/themes/` mappában található egyszerű JSON fájlok.
+Presentation styling is decoupled from content. Themes are stored as declarative JSON files in `generator/themes/`.
 
-### Elérhető témák listázása:
+### List Available Themes:
 ```bash
 ./run.py --list-themes
 ```
 
-Beépített témák:
-- `modern_clean`: Világos, modern kártyás stílus kék hangsúlyokkal (alapértelmezett)
-- `dark_mode`: Prémium sötétszürke háttér indigókék akcentussal
-- `emerald_growth`: Természetes, tiszta smaragdzöld stílus
-- `warm_academic`: Meleg krémszínű és bordó akadémiai dizájn
+Built-in themes:
+- `modern_clean`: Crisp light card layout with blue accents (default)
+- `dark_mode`: Premium slate dark background with indigo accents
+- `emerald_growth`: Natural, fresh emerald green theme
+- `warm_academic`: Classic cream and burgundy editorial style
 
-### Új téma generálása AI-val:
-Új stílust közvetlenül parancssorból is generálhatsz egyetlen szöveges leírás megadásával:
+### Generate a New Theme with AI:
+Create a new theme via natural language prompt (in English or Hungarian):
 ```bash
-./run.py --ai-theme "Cyberpunk sötét neon stílus lila és ciánkék színekkel"
+./run.py --ai-theme "Cyberpunk neon dark theme with purple and cyan"
 ```
-A generátor azonnal létrehozza az új stílust a `generator/themes/` mappában, amit rögtön használhatsz:
+The generator creates the theme in `generator/themes/`, ready for immediate use:
 ```bash
-./run.py slideshow_1 --theme cyberpunk_sotet_neon
+./run.py slideshow_1 --theme cyberpunk_neon_dark_theme
 ```
 
-Ha saját magad vagy külső chatben (ChatGPT, Claude) szeretnél témát generáltatni, használd a [`generator/themes/THEME_PROMPT.md`](generator/themes/THEME_PROMPT.md) fájlban található kész promptot!
+To create themes with external LLMs (Claude, ChatGPT), see [`generator/themes/THEME_PROMPT.md`](generator/themes/THEME_PROMPT.md).
 
 ---
 
-## ⌨️ Webes Diavetítő Billentyűparancsok
+## ⌨️ Web Slideshow Controls
 
-A `dist/index.html` megnyitásakor:
-* **Következő dia**: `Jobbra nyíl` (`→`), `Szóköz`, vagy `PageDown`
-* **Előző dia**: `Balra nyíl` (`←`) vagy `PageUp`
-* **Első / Utolsó dia**: `Home` / `End`
-* **Teljes képernyő**: `F` billentyű
-* **Hanglejátszás**: Kattintás a dia fejlécében található **Narráció** gombra.
+When viewing `dist/index.html`:
+* **Next Slide**: `Right Arrow` (`→`), `Spacebar`, or `PageDown`
+* **Previous Slide**: `Left Arrow` (`←`) or `PageUp`
+* **First / Last Slide**: `Home` / `End`
+* **Fullscreen**: `F` key
+* **Audio Playback**: Click the **Narration** button in the slide header to play or pause.

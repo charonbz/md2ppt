@@ -88,7 +88,7 @@ def _add_audio_widget(slide, audio_path: Path, accent_rgb, badge_bg_rgb, badge_t
     tf = badge.text_frame
     tf.word_wrap = True
     p = tf.paragraphs[0]
-    p.text = "  🔊 Hangfelvétel"
+    p.text = "  🔊 Audio Narration"
     p.font.size = Pt(11)
     p.font.bold = True
     p.font.color.rgb = badge_text_rgb

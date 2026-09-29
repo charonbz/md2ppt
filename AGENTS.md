@@ -1,67 +1,74 @@
-# Útmutató és Szabályzat Fejlesztő AI Ügynökök Számára (AGENTS.md)
+# Guidelines and Rules for AI Coding Agents (AGENTS.md)
 
-Ez a fájl kötelező érvényű irányelveket és szabályokat tartalmaz minden olyan AI kódoló asszisztens (Agent) számára, amely a **slideshowGenerator** kódbázisán dolgozik.
+This file contains mandatory guidelines and rules for all AI coding assistants (Agents) working on the **slideshowGenerator** codebase.
 
 ---
 
 > [!CAUTION]
-> ### 🚨 KÖTELEZŐ DOKUMENTÁCIÓS KARBANTARTÁS (MANDATORY RULE)
-> **Minden AI ügynök köteles a `docs/` mappában található dokumentációt naprakészen tartani!**
+> ### 🚨 MANDATORY DOCUMENTATION MAINTENANCE
+> **Every AI agent must keep the documentation in the `docs/` folder completely up to date!**
 > 
-> Ha bármilyen módosítást végzel a rendszeren:
-> 1. Új funkciót adsz hozzá vagy meglévőt módosítasz,
-> 2. Változtatsz a CLI paramétereken, adatmodelleken (`models.py`) vagy a parser viselkedésén,
-> 3. Módosítod a stílusmotort (`theme_engine.py`) vagy a renderelőket (`renderers/`),
-> 4. Hibát javítasz (bugfix) vagy új formátumot vezetsz be,
+> If you make any changes to the system:
+> 1. Add new features or modify existing ones,
+> 2. Change CLI parameters, data models (`models.py`), or parser behavior,
+> 3. Modify the styling engine (`theme_engine.py`) or renderers (`renderers/`),
+> 4. Fix bugs or introduce new formats,
 > 
-> **KÖTELES VAGY AZONNAL FRISSÍTENI:**
-> * A [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) fájlt (architektúra, komponensek, adatfolyam), ÉS
-> * A [`docs/DECISIONS.md`](docs/DECISIONS.md) fájlt (új ADR vagy döntési bejegyzés formájában indokolva a változtatást).
+> **YOU ARE STRICTLY REQUIRED TO IMMEDIATELY UPDATE:**
+> * [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (architecture, components, data flow), AND
+> * [`docs/DECISIONS.md`](docs/DECISIONS.md) (documenting rationale as an ADR or decision entry).
 > 
-> **TILOS olyan kódot átadni a felhasználónak, amely eltér a dokumentációtól, vagy elavulttá teszi azt!**
+> **NEVER deliver code that diverges from the documentation or makes it obsolete!**
 
 ---
 
-## 🏛️ Alapvető Architektúrális Elvek
+## 🌐 Language Policy (Code & Documentation in English)
 
-1. **Három formátum elve (PPTX, HTML, PDF):**
-   * Minden módosításnak tiszteletben kell tartania a három egyenrangú célformátumot.
-   * Ha új vizuális elemet vezetsz be, azt mind a webes (`html_renderer.py`), mind a PowerPoint (`pptx_renderer.py`), mind a PDF (`pdf_renderer.py`) kimeneten konzisztensen meg kell valósítani.
-
-2. **Standalone Webes Lejátszó (Zero-Dependency):**
-   * Az `index.html` önállóan, hálózati kapcsolat nélkül is működőképes kell, hogy maradjon.
-   * A hangfájlokat kötelező Base64 adatfolyamként közvetlenül beágyazni a HTML-be, megelőzve a helyi `file:///` biztonsági korlátozásokat és relatív útvonalhibákat.
-   * Az `ffmpeg` alapú MP3 transzkódolást és a többszintű fallbacket meg kell őrizni.
-
-3. **Deklaratív JSON Témák:**
-   * A prezentációk kinézetét nem szabad a generáló logikába bedrótozni.
-   * A stílusokat a `generator/themes/*.json` fájlok és a `schema.json` vezérli.
-   * Meg kell őrizni az AI általi stílusgenerálhatóságot (`--ai-theme`).
-
-4. **Azonnali Port-újrahasznosítás:**
-   * A webszerver indításakor kötelező a `ReusableTCPServer` használata (`SO_REUSEADDR`, `SO_REUSEPORT`), hogy `Ctrl + C` után a port azonnal újraindítható legyen.
-
-5. **Verziókezelési fegyelem:**
-   * A `dist/` almappák generált tartalmak, **soha nem kerülhetnek be a Git repóba** (lásd `.gitignore`).
-   * A `slideshow_1` mappa működő referenciapéldaként szolgál, a benne lévő forrásokat (`slides.md`, `slide_title.m4a`) meg kell őrizni.
+* **Codebase & Documentation:** All source code, variable names, functions, comments, docstrings, CLI parameters, console logs, documentation (`docs/`, `README.md`, `AGENTS.md`), and Git commit messages MUST be written in **English**.
+* **User Content & Prompts:** Presentation slides (`slides.md`) and user prompts are typically in **Hungarian** (or any user language). The parser, theme generator, and presentation layouts must fully accommodate Hungarian characters (accents, UTF-8), Hungarian keywords, and multilingual slide contents.
 
 ---
 
-## 🧪 Kötelező Ellenőrzési Lépések Módosítás Után
+## 🏛️ Core Architectural Principles
 
-Mielőtt befejeznéd a feladatodat, futtasd le a következő teszteket:
+1. **Tri-Format Principle (PPTX, HTML, PDF):**
+   * All modifications must preserve the three first-class output formats.
+   * If a new visual feature or layout is introduced, it must be consistently implemented across Web (`html_renderer.py`), PowerPoint (`pptx_renderer.py`), and PDF (`pdf_renderer.py`).
+
+2. **Standalone Web Player (Zero-Dependency):**
+   * `index.html` must remain fully operational offline without any network connectivity or external servers.
+   * Audio files must be embedded directly into HTML as Base64 data streams (`data:audio/mpeg;base64,...`) to prevent `file:///` security sandbox blocks and relative path failures.
+   * The `ffmpeg`-based MP3 transcoding and multi-source fallback mechanism must be preserved.
+
+3. **Declarative JSON Themes:**
+   * Presentation styling must never be hardcoded into the generation logic.
+   * Themes are controlled via `generator/themes/*.json` files and validated by `schema.json`.
+   * AI-powered style generation (`--ai-theme`) must remain supported, accepting both English and Hungarian prompt descriptions.
+
+4. **Instant Port Reuse:**
+   * The built-in web server must use `ReusableTCPServer` (`SO_REUSEADDR` and `SO_REUSEPORT`) so that upon `Ctrl + C` termination, the port is freed immediately without OS socket timeouts.
+
+5. **Version Control Hygiene:**
+   * The `dist/` subfolders are generated artifacts and **must never be committed to Git** (enforced via `.gitignore`).
+   * The `slideshow_1` directory serves as a living reference example; its source assets (`slides.md`, `slide_title.m4a`) must be preserved.
+
+---
+
+## 🧪 Mandatory Verification Steps Before Concluding a Task
+
+Before completing your turn, execute the following verification suite:
 
 ```bash
-# 1. Generálás ellenőrzése
+# 1. Verify generation
 ./run.py slideshow_1
 
-# 2. PPTX struktúra és beágyazott média ellenőrzése
+# 2. Verify PPTX structure and embedded media
 .venv/bin/python -c "from pptx import Presentation; prs = Presentation('slideshow_1/dist/presentation.pptx'); assert len(prs.slides) == 4"
 
-# 3. Témák listázásának és egy alternatív téma generálásának ellenőrzése
+# 3. Verify theme listing and generation with an alternative theme
 ./run.py --list-themes
 ./run.py slideshow_1 --theme dark_mode
 
-# 4. Dokumentáció frissítésének ellenőrzése
+# 4. Verify documentation maintenance
 git status
 ```

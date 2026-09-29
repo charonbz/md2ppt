@@ -1,30 +1,30 @@
-# Rendszerarchitektúra és Működési Dokumentáció
+# System Architecture & Technical Documentation
 
-Ez a dokumentum részletesen bemutatja a **Slideshow Generator** belső felépítését, technológiai hátterét és adatfolyamát.
-
----
-
-## 1. Rendszer-áttekintés (System Overview)
-
-A projekt célja, hogy egyszerű, ember által vagy AI modellek által írt Markdown vázlatokból (`slides.md`) és tetszőleges hangfájlokból (`.m4a`, `.mp3`) teljesen automatikusan, emberi beavatkozás nélkül hozzon létre professzionális, 16:9 arányú prezentációkat három független kimeneti formátumban:
-
-1. **Microsoft PowerPoint (`presentation.pptx`)**: Szabványos prezentáció beágyazott natív médiaobjektummal (kattintásra induló hanggal).
-2. **Interaktív Webes Prezentáció (`index.html`)**: Önálló, függőségmentes HTML5/CSS3/JavaScript diavetítő beágyazott audióval, valós idejű idősávval, billentyűzet-vezérléssel és kártyás elrendezéssel.
-3. **Vektoros PDF (`presentation.pdf`)**: Pixelpontos, 16:9 képarányú, nyomtatható és vetíthető PDF változat.
+This document describes the internal architecture, technical background, and data flow of the **Slideshow Generator**.
 
 ---
 
-## 2. Architektúra és Adatfolyam
+## 1. System Overview
 
-A generátor egy determinisztikus, többlépcsős feldolgozó futószalagot (pipeline) alkalmaz:
+The goal of this platform is to convert plain Markdown outlines (`slides.md`) accompanied by optional slide-level audio files (`.m4a`, `.mp3`) into professional, 16:9 widescreen presentations across three first-class output formats:
+
+1. **Microsoft PowerPoint (`presentation.pptx`)**: Standard PowerPoint file with native embedded audio shapes (click-to-play narration).
+2. **Interactive Web Presentation (`index.html`)**: Fully self-contained, zero-dependency HTML5/CSS3/JavaScript slideshow with embedded Base64 audio, live duration/progress tracker, keyboard navigation, and card-based responsive layout.
+3. **Vector PDF (`presentation.pdf`)**: Pixel-perfect, 16:9 widescreen printable and presentable PDF export.
+
+---
+
+## 2. Architecture & Data Pipeline
+
+The generator employs a deterministic, multi-stage processing pipeline:
 
 ```mermaid
 flowchart TD
-    MD["slides.md<br/>(Markdown szöveg + metaadatok)"] --> Parser["parser.py<br/>(Markdown Parser & Lexer)"]
-    AudioSrc["Audió fájlok<br/>(*.m4a, *.mp3, stb.)"] --> AudioProc["Audio Processzor<br/>(ffmpeg transzkódolás & Base64)"]
+    MD["slides.md<br/>(Markdown text + Metadata)"] --> Parser["parser.py<br/>(Markdown Parser & Lexer)"]
+    AudioSrc["Audio Files<br/>(*.m4a, *.mp3, etc.)"] --> AudioProc["Audio Processor<br/>(ffmpeg Transcoding & Base64)"]
     
-    Parser --> AST["PresentationData AST<br/>(SlideData, CardItem objektumok)"]
-    ThemeFiles["themes/*.json"] --> ThemeEngine["theme_engine.py<br/>(Témamotor & Színpaletták)"]
+    Parser --> AST["PresentationData AST<br/>(SlideData, CardItem Objects)"]
+    ThemeFiles["themes/*.json"] --> ThemeEngine["theme_engine.py<br/>(Theme Loader & Palettes)"]
     
     AST --> Pipeline["Render Engine"]
     AudioProc --> Pipeline
@@ -33,91 +33,92 @@ flowchart TD
     Pipeline --> HTMLR["html_renderer.py"]
     Pipeline --> PPTXR["pptx_renderer.py"]
     
-    HTMLR --> DistHTML["dist/index.html<br/>(Önálló webes lejátszó)"]
+    HTMLR --> DistHTML["dist/index.html<br/>(Standalone Web Player)"]
     HTMLR --> ChromeHeadless["Headless Google Chrome<br/>(--print-to-pdf)"]
-    ChromeHeadless --> DistPDF["dist/presentation.pdf<br/>(Vektoros 16:9 PDF)"]
+    ChromeHeadless --> DistPDF["dist/presentation.pdf<br/>(Vector 16:9 PDF)"]
     
-    PPTXR --> DistPPTX["dist/presentation.pptx<br/>(PowerPoint beágyazott hanggal)"]
+    PPTXR --> DistPPTX["dist/presentation.pptx<br/>(PowerPoint with Embedded Audio)"]
 ```
 
 ---
 
-## 3. Komponensek és Mappastruktúra
+## 3. Directory Layout & Components
 
 ```
 slideshowGenerator/
-├── docs/                       # Rendszer- és architektúra dokumentáció
-│   ├── ARCHITECTURE.md         # Részletes technológiai háttér és működés
-│   └── DECISIONS.md            # Kulcsfontosságú tervezési döntések (ADR)
+├── docs/                       # System & architectural documentation
+│   ├── ARCHITECTURE.md         # Detailed technical background and components
+│   └── DECISIONS.md            # Architecture Decision Records (ADRs)
 ├── generator/
-│   ├── models.py               # AST adatmodellek (SlideData, CardItem, ThemeConfig)
-│   ├── parser.py               # Markdown feldolgozó, diák és kártyák értelmezése
-│   ├── theme_engine.py         # JSON témák betöltése, validációja és kezelése
-│   ├── theme_generator.py      # AI és algoritmikus stílusgeneráló motor
-│   ├── themes/                 # Deklaratív JSON stílusdefiníciók
-│   │   ├── schema.json         # JSON Schema a témák validálásához
-│   │   ├── modern_clean.json   # Alapértelmezett modern világos stílus
-│   │   ├── dark_mode.json      # Prémium sötét téma
-│   │   ├── emerald_growth.json # Természetes smaragdzöld téma
-│   │   ├── warm_academic.json  # Meleg akadémiai stílus
-│   │   └── THEME_PROMPT.md     # Útmutató és prompt sablon új AI témákhoz
-│   ├── renderers/              # Formátum-specifikus generáló modulok
-│   │   ├── html_renderer.py    # Interaktív webes diavetítő generátor
-│   │   ├── pptx_renderer.py    # PowerPoint fájl generátor (python-pptx)
-│   │   └── pdf_renderer.py     # Chrome headless PDF konvertáló
-│   └── cli.py                  # CLI interfész és azonnal újrahasznosítható webszerver
-├── slideshow_1/                # Példa diasor
-│   ├── slides.md               # Forrás diák metaadatokkal
-│   ├── slide_title.m4a         # Eredeti hangfelvétel
-│   └── dist/                   # Generált kimenetek (git által figyelmen kívül hagyva)
-├── run.py                      # Futtató wrapper automatikus .venv detektálással
-├── requirements.txt            # Python függőségek
-├── AGENTS.md                   # AI ügynökök szabályzata és karbantartási útmutatója
-└── README.md                   # Felhasználói útmutató
+│   ├── models.py               # AST data models (SlideData, CardItem, ThemeConfig)
+│   ├── parser.py               # Markdown parser & card layout extractor
+│   ├── theme_engine.py         # JSON theme loader, validator, and manager
+│   ├── theme_generator.py      # AI & algorithmic theme generator engine
+│   ├── themes/                 # Declarative JSON style definitions
+│   │   ├── schema.json         # JSON Schema for theme validation
+│   │   ├── modern_clean.json   # Default crisp light theme with blue accents
+│   │   ├── dark_mode.json      # Premium slate dark theme
+│   │   ├── emerald_growth.json # Natural green theme
+│   │   ├── warm_academic.json  # Warm cream & burgundy academic style
+│   │   └── THEME_PROMPT.md     # Prompt guidelines for generating new AI themes
+│   ├── renderers/              # Format-specific rendering engines
+│   │   ├── html_renderer.py    # Interactive standalone HTML5 presentation renderer
+│   │   ├── pptx_renderer.py    # PowerPoint generator (python-pptx)
+│   │   └── pdf_renderer.py     # Headless Chrome vector PDF exporter
+│   └── cli.py                  # CLI entry point and reusable TCP web server
+├── slideshow_1/                # Living reference example
+│   ├── slides.md               # Source markdown with audio metadata
+│   ├── slide_title.m4a         # Recorded narration audio
+│   └── dist/                   # Output artifacts (ignored by git)
+├── run.py                      # Root launcher with automatic .venv detection
+├── requirements.txt            # Python dependencies (python-pptx, pillow, lxml)
+├── AGENTS.md                   # Guidelines and mandatory rules for AI agents
+└── README.md                   # User guide and CLI instructions
 ```
 
 ---
 
-## 4. Részletes Modulleírások
+## 4. Component Details
 
-### 4.1. Parser és Belső AST (`generator/parser.py`, `models.py`)
-- **Diahatárolók felismerése**: Támogatja a `# Title`, `# Slide` és `---` jelöléseket.
-- **Metaadat kinyerése**:
-  - `<!-- audio: fajlnev.m4a -->`: Csatolt hangfelvétel.
-  - `<!-- notes: ... -->`: Előadói jegyzetek.
-  - `<!-- type: ... -->`: Kézi dia-típus felülbírálás.
-- **Tartalmi felismerés és kártyásítás**:
-  - Ha a dián pontok szerepelnek (`- Cím: Leírás`), a parser automatikusan `CardItem` objektumokká alakítja őket.
-  - **Folytonos számozás**: Ha egymás után több kártyás dia következik (pl. kategóriák 1. és 2. része), a parser átviszi a számlálót, így az 1. dián `01, 02`, a 2. dián pedig `03, 04` jelvények jelennek meg.
-  - **Definíciós dia**: Ha a dián nincsenek felsoroláspontok, csak egy terjedelmes folyószöveg, azt kiemelt idézet/definíció kártyává formálja.
+### 4.1. Parser & Internal AST (`generator/parser.py`, `models.py`)
+- **Slide Delimiters**: Supports `# Title`, `# Slide`, and `---` horizontal rules.
+- **Metadata Extraction**:
+  - `<!-- audio: filename.m4a -->`: Associates an audio track with the slide.
+  - `<!-- notes: ... -->`: Speaker notes.
+  - `<!-- type: ... -->`: Manual layout type override (`title`, `cards`, `definition`).
+- **Card Detection & Continuity**:
+  - Bullet items (`- Title: Description`) are transformed into visual `CardItem` blocks.
+  - **Continuous Numbering**: Sequential card slides maintain a running counter (e.g., Slide 3 displays badges `01, 02`, while Slide 4 continues with `03, 04`).
+  - **Definition Slide**: Slides without bullet points containing descriptive paragraphs are formatted as highlighted definition/quote cards.
 
-### 4.2. Stílusmodul (`generator/themes/`, `theme_engine.py`)
-- A témák teljesen függetlenek a kódtól és a diasor tartalmától.
-- Minden téma egy tiszta, deklaratív JSON fájl, amely tartalmazza:
-  - Színpalettát (háttér, kártya, szegély, elsődleges/másodlagos szöveg, kiemelő szín, jelvények).
-  - Tipográfiát (cím és törzs betűcsalád).
-  - Geometriát (kártya lekerekítés `border-radius`, árnyékok, szegélyvastagság).
-- **AI Témagenerálás (`theme_generator.py`)**: Ha van `GEMINI_API_KEY`, meghívja az LLM-et; ha nincs, egy algoritmikus stílusszintetizáló elemzi a kulcsszavakat (pl. "neon", "sötét", "zöld", "skandináv"), és azonnal létrehozza az új stílus JSON fájlját.
+### 4.2. Theming Engine (`generator/themes/`, `theme_engine.py`)
+- Themes are completely decoupled from presentation content.
+- Each theme is defined in a declarative JSON file specifying:
+  - Color palette (`background`, `card_bg`, `card_border`, `primary_text`, `secondary_text`, `accent`, `badge_bg`, `badge_text`).
+  - Typography (`title_font`, `body_font`).
+  - Geometries (`card_radius_px`, `card_shadow`, `border_width_px`).
+- **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON.
 
-### 4.3. Webes Renderelő (`generator/renderers/html_renderer.py`)
-- **Zero-Dependency önálló HTML**: A hangfájlokat a generátor automatikusan Base64 formátumban (`data:audio/mpeg;base64,...`) közvetlenül a HTML-be ágyazza. Ezáltal a fájl bárhova másolható, és elkerüli a böngészők helyi `file://` biztonsági korlátozásait.
-- **Automatikus MP3 transzkódolás**: Ha a rendszeren elérhető az `ffmpeg`, a telefonos vagy nem szabványos hangfájlokat (pl. Samsung `3gp4` M4A konténer) azonnal univerzális MP3-má konvertálja.
-- **Többszintű `<audio>` fallback**: A böngésző sorban próbálja: Base64 MP3 -> helyi MP3 -> eredeti M4A.
-- **16:9 arányú nézet**: CSS `aspect-ratio: 16/9; width: min(100vw, calc(100vh * 16 / 9));`.
-- **Interakció**: Billentyűzetkezelés (nyilak, szóköz, PgUp/PgDown, 'F' teljes képernyő), valós idejű lejátszási idősáv (`Lejátszás (0:02 / 0:07)`), animált hanghullámok.
+### 4.3. HTML Renderer (`generator/renderers/html_renderer.py`)
+- **Zero-Dependency Standalone HTML**: Audio tracks are embedded directly into the HTML as Base64 data streams (`data:audio/mpeg;base64,...`). This bypasses browser `file:///` sandbox restrictions and makes the HTML completely portable.
+- **Automatic MP3 Transcoding**: If `ffmpeg` is present, proprietary or container-specific audio formats (such as Samsung `3gp4` M4A files) are converted to standard MP3.
+- **Multi-Source Audio Fallback**: The `<audio>` element provides three fallback sources: embedded Base64 MP3, relative MP3 file, and original file.
+- **16:9 Canvas**: Responsive aspect ratio (`aspect-ratio: 16/9; width: min(100vw, calc(100vh * 16 / 9));`).
+- **Interactive Controls**: Keyboard navigation (arrow keys, spacebar, PgUp/PgDown, `F` for fullscreen), live time tracking (`Playing (0:02 / 0:07)`), and animated wave bars.
 
-### 4.4. PowerPoint Renderelő (`generator/renderers/pptx_renderer.py`)
-- A `python-pptx` könyvtár segítségével 16:9 szélesvásznú (13.333 × 7.5 hüvelyk) vásznat épít.
-- A kártyákat és definíciós dobozokat vektoros lekerekített téglalapokként rajzolja fel a téma színeivel.
-- A hangfájlokat natív médiaobjektumként csomagolja a `.pptx` ZIP archívumba (`ppt/media/media1.m4a`), és egy hangszóró ikont helyez el a dia jobb felső sarkában kattintásra induló lejátszással (`<p14:media>` és `<a:hlinkClick action="ppaction://media">`).
+### 4.4. PowerPoint Renderer (`generator/renderers/pptx_renderer.py`)
+- Uses `python-pptx` to build 16:9 widescreen slides (`13.333 × 7.5` inches).
+- Renders cards and content blocks as native vector rounded shapes colored according to the selected theme.
+- Embeds audio directly into the `.pptx` ZIP package (`ppt/media/media1.m4a`) as a native media shape (`<p14:media>` and `<a:hlinkClick action="ppaction://media">`), triggering playback on click.
 
-### 4.5. PDF Renderelő (`generator/renderers/pdf_renderer.py`)
-- A HTML-ben elhelyezett `@media print { @page { size: 16in 9in; margin: 0; } }` stíluslapot kihasználva meghívja a rendszerszintű Headless Google Chrome-ot:
+### 4.5. PDF Renderer (`generator/renderers/pdf_renderer.py`)
+- Leverages the print stylesheet in the HTML (`@media print { @page { size: 16in 9in; margin: 0; } }`).
+- Executes Headless Google Chrome:
   ```bash
   google-chrome-stable --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=dist/presentation.pdf dist/index.html
   ```
-- Az eredmény egy 100%-ban pixelpontos, vektoros szövegeket tartalmazó 16:9-es PDF.
+- Produces clean, vector-rendered, 16:9 widescreen PDF slides.
 
-### 4.6. Reusable CLI Webszerver (`generator/cli.py`)
-- A beépített `--serve` parancs a kimeneti mappát szolgálja ki egy helyi HTTP szerveren.
-- **Azonnali port-újrahasznosítás**: A `ReusableTCPServer` osztály beállítja a `SO_REUSEADDR` és `SO_REUSEPORT` kernel flag-eket, és `Ctrl + C` esetén azonnal lezárja a socketet (`server.server_close()`), megszüntetve a Linux `TIME_WAIT` port-beragadását.
+### 4.6. Reusable TCP Web Server (`generator/cli.py`)
+- Built-in `--serve` command launches a local HTTP server for testing.
+- **Instant Port Reuse**: Implements `ReusableTCPServer` with `SO_REUSEADDR` and `SO_REUSEPORT`, ensuring that on `Ctrl + C`, the socket descriptor is immediately closed without lingering in Linux `TIME_WAIT`.

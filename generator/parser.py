@@ -17,7 +17,7 @@ def parse_slides_file(slides_path: Path) -> PresentationData:
 
     raw_slides = split_into_raw_slides(text)
     slides: List[SlideData] = []
-    pres_title = "Prezentáció"
+    pres_title = "Presentation"
     global_card_counter = 1
 
     for idx, raw_slide in enumerate(raw_slides, start=1):
@@ -212,10 +212,10 @@ def _parse_content_slide(
             first_p = intro_paragraphs[0] if intro_paragraphs else ""
             if "értelmezésében" in first_p or "matematikai műveltség" in first_p:
                 final_title = "A matematikai műveltség értelmezése"
-            elif "definíció" in first_p.lower():
-                final_title = "Definíció"
+            elif "definíció" in first_p.lower() or "definition" in first_p.lower():
+                final_title = "Definition"
             else:
-                final_title = "Áttekintés"
+                final_title = "Overview"
         elif slide_type == SlideType.CARDS:
             if any("mennyiség" in c.title.lower() or "változás" in c.title.lower() for c in cards):
                 final_title = "A mérés tartalmi kategóriái"
@@ -226,9 +226,9 @@ def _parse_content_slide(
                 if len(intro_paragraphs[0]) < 80:
                     final_title = intro_paragraphs[0].rstrip(":")
             else:
-                final_title = f"Fő kategóriák"
+                final_title = "Key Categories"
         else:
-            final_title = f"Dia {index}"
+            final_title = f"Slide {index}"
 
     slide = SlideData(
         index=index,
