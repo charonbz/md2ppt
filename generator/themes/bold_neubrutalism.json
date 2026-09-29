@@ -1,0 +1,29 @@
+{
+  "id": "bold_neubrutalism",
+  "name": "Bold Neubrutalism (Pop & Sharp)",
+  "description": "High-contrast pop design with thick solid black borders, hard offset shadows, and vibrant yellow.",
+  "archetype": "neubrutalism",
+  "colors": {
+    "background": "#FFFDF0",
+    "card_bg": "#FFFFFF",
+    "card_border": "#000000",
+    "primary_text": "#000000",
+    "secondary_text": "#222222",
+    "accent": "#FFDF00",
+    "accent_light": "#FFFBE6",
+    "badge_bg": "#FFDF00",
+    "badge_text": "#000000",
+    "audio_btn_bg": "#000000",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "Impact, 'Arial Black', -apple-system, sans-serif",
+    "body_font": "'Helvetica Neue', Arial, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 0,
+    "card_shadow": "5px 5px 0px #000000",
+    "title_align": "left",
+    "border_width_px": 3
+  }
+}

@@ -16,6 +16,11 @@
       "type": "string",
       "description": "Brief description of the visual style"
     },
+    "archetype": {
+      "type": "string",
+      "enum": ["editorial", "cards", "neubrutalism", "terminal", "minimal", "corporate"],
+      "description": "Visual structural archetype governing shapes, borders, shadows, and layout"
+    },
     "colors": {
       "type": "object",
       "required": ["background", "card_bg", "primary_text", "secondary_text", "accent"],

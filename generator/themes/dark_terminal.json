@@ -1,0 +1,29 @@
+{
+  "id": "dark_terminal",
+  "name": "Dark Terminal (Hacker Matrix)",
+  "description": "Developer console aesthetic with deep black background, emerald matrix green accents, and monospace code typography.",
+  "archetype": "terminal",
+  "colors": {
+    "background": "#0D1117",
+    "card_bg": "#161B22",
+    "card_border": "#30363D",
+    "primary_text": "#F0F6FC",
+    "secondary_text": "#8B949E",
+    "accent": "#2EA043",
+    "accent_light": "#1B4728",
+    "badge_bg": "#21262D",
+    "badge_text": "#58A6FF",
+    "audio_btn_bg": "#238636",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+    "body_font": "'JetBrains Mono', 'Fira Code', 'Courier New', monospace"
+  },
+  "styles": {
+    "card_radius_px": 4,
+    "card_shadow": "0 0 12px rgba(46, 160, 67, 0.15)",
+    "title_align": "left",
+    "border_width_px": 1
+  }
+}

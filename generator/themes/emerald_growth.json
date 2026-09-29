@@ -2,6 +2,7 @@
   "id": "emerald_growth",
   "name": "Emerald Growth (Natural Green)",
   "description": "Fresh, natural emerald theme with pure white cards and green accents.",
+  "archetype": "cards",
   "colors": {
     "background": "#F0FDF4",
     "card_bg": "#FFFFFF",

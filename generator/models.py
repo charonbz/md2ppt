@@ -11,6 +11,15 @@ class SlideType(str, Enum):
     STANDARD = "standard"
 
 
+class ArchetypeType(str, Enum):
+    EDITORIAL = "editorial"
+    CARDS = "cards"
+    NEUBRUTALISM = "neubrutalism"
+    TERMINAL = "terminal"
+    MINIMAL = "minimal"
+    CORPORATE = "corporate"
+
+
 @dataclass
 class CardItem:
     title: str
@@ -50,6 +59,7 @@ class ThemeConfig:
     colors: Dict[str, str]
     fonts: Dict[str, str]
     styles: Dict[str, Any]
+    archetype: ArchetypeType = ArchetypeType.CARDS
 
     def hex_to_rgb(self, hex_code: str) -> tuple[int, int, int]:
         hex_code = hex_code.lstrip("#")

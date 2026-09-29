@@ -465,6 +465,231 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       pointer-events: auto;
     }}
 
+    /* ==========================================================
+       ARCHETYPE SPECIFIC STYLES
+       ========================================================== */
+
+    /* 1. EDITORIAL ARCHETYPE */
+    .archetype-editorial {{
+      font-family: Georgia, 'Times New Roman', serif;
+    }}
+    .archetype-editorial .slide-main-title,
+    .archetype-editorial .slide-heading,
+    .archetype-editorial .card-title {{
+      font-family: Georgia, 'Times New Roman', serif;
+      font-weight: 700;
+    }}
+    .archetype-editorial .title-pill {{
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      font-family: Georgia, serif;
+      letter-spacing: 0.12em;
+    }}
+    .archetype-editorial .slide-header {{
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 18px;
+    }}
+    .archetype-editorial .info-card {{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-left: 2px solid var(--accent) !important;
+      border-radius: 0 !important;
+      padding: 10px 0 10px 24px !important;
+    }}
+    .archetype-editorial .info-card:hover {{
+      transform: none !important;
+    }}
+    .archetype-editorial .card-index-badge {{
+      background: transparent !important;
+      color: var(--accent) !important;
+      border: none !important;
+      font-family: Georgia, serif !important;
+      font-size: 1.15rem !important;
+      width: auto !important;
+      height: auto !important;
+      margin-top: 0 !important;
+    }}
+    .archetype-editorial .definition-card {{
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      border: none !important;
+      border-top: 1px solid var(--card-border) !important;
+      border-bottom: 1px solid var(--card-border) !important;
+      padding: 36px 0 !important;
+    }}
+    .archetype-editorial .definition-text {{
+      font-family: Georgia, 'Times New Roman', serif;
+      font-style: italic;
+      font-size: clamp(1.2rem, 2vw, 1.6rem);
+      line-height: 1.8;
+    }}
+    .archetype-editorial .definition-quote-icon {{
+      display: none;
+    }}
+
+    /* 2. NEUBRUTALISM ARCHETYPE */
+    .archetype-neubrutalism .info-card {{
+      border: 3px solid #000000 !important;
+      border-radius: 2px !important;
+      box-shadow: 5px 5px 0px #000000 !important;
+      background: var(--card-bg) !important;
+    }}
+    .archetype-neubrutalism .info-card:hover {{
+      transform: translate(2px, 2px) !important;
+      box-shadow: 2px 2px 0px #000000 !important;
+    }}
+    .archetype-neubrutalism .definition-card {{
+      border: 3px solid #000000 !important;
+      border-left: 12px solid #000000 !important;
+      border-radius: 2px !important;
+      box-shadow: 6px 6px 0px #000000 !important;
+    }}
+    .archetype-neubrutalism .card-index-badge {{
+      border: 2px solid #000000 !important;
+      border-radius: 2px !important;
+      box-shadow: 2px 2px 0px #000000 !important;
+      background: var(--accent) !important;
+      color: #000000 !important;
+      font-weight: 900 !important;
+    }}
+    .archetype-neubrutalism .title-pill {{
+      border: 2px solid #000000 !important;
+      box-shadow: 3px 3px 0px #000000 !important;
+      border-radius: 2px !important;
+      color: #000000 !important;
+    }}
+    .archetype-neubrutalism .audio-widget {{
+      border: 2px solid #000000 !important;
+      box-shadow: 3px 3px 0px #000000 !important;
+      border-radius: 4px !important;
+    }}
+    .archetype-neubrutalism .nav-btn,
+    .archetype-neubrutalism .slide-counter {{
+      border: 2px solid #000000 !important;
+      box-shadow: 2px 2px 0px #000000 !important;
+      border-radius: 2px !important;
+    }}
+
+    /* 3. TERMINAL ARCHETYPE */
+    .archetype-terminal {{
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+    }}
+    .archetype-terminal .slide-main-title,
+    .archetype-terminal .slide-heading,
+    .archetype-terminal .card-title,
+    .archetype-terminal .definition-text {{
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+    }}
+    .archetype-terminal .slide-category::before {{
+      content: "root@slides:~# ";
+      color: var(--secondary-text);
+      opacity: 0.7;
+    }}
+    .archetype-terminal .title-pill::before {{
+      content: "[INIT] ";
+    }}
+    .archetype-terminal .title-pill {{
+      border-radius: 4px !important;
+      border: 1px solid var(--accent) !important;
+      background: rgba(0, 0, 0, 0.4) !important;
+    }}
+    .archetype-terminal .info-card {{
+      border: 1px solid var(--card-border) !important;
+      border-radius: 4px !important;
+      background: var(--card-bg) !important;
+      box-shadow: 0 0 16px rgba(46, 160, 67, 0.12) !important;
+    }}
+    .archetype-terminal .card-title::before {{
+      content: "> ";
+      color: var(--accent);
+      font-weight: 700;
+    }}
+    .archetype-terminal .card-index-badge {{
+      border-radius: 3px !important;
+      background: rgba(255, 255, 255, 0.06) !important;
+      color: var(--accent) !important;
+      border: 1px solid var(--accent) !important;
+      font-family: monospace !important;
+    }}
+    .archetype-terminal .definition-card {{
+      border: 1px dashed var(--accent) !important;
+      border-left: 6px solid var(--accent) !important;
+      border-radius: 4px !important;
+      background: var(--card-bg) !important;
+    }}
+
+    /* 4. SWISS MINIMAL ARCHETYPE */
+    .archetype-minimal .info-card {{
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+    }}
+    .archetype-minimal .info-card:hover {{
+      transform: none !important;
+    }}
+    .archetype-minimal .card-top {{
+      flex-direction: column !important;
+      gap: 6px !important;
+      margin-bottom: 8px !important;
+    }}
+    .archetype-minimal .card-index-badge {{
+      background: transparent !important;
+      color: var(--accent) !important;
+      font-size: 2.6rem !important;
+      font-weight: 900 !important;
+      width: auto !important;
+      height: auto !important;
+      line-height: 1 !important;
+      margin: 0 !important;
+      justify-content: flex-start !important;
+      letter-spacing: -0.04em;
+    }}
+    .archetype-minimal .definition-card {{
+      background: transparent !important;
+      border: none !important;
+      border-left: 4px solid var(--accent) !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      padding: 16px 0 16px 28px !important;
+    }}
+    .archetype-minimal .title-pill {{
+      background: transparent !important;
+      color: var(--accent) !important;
+      padding-left: 0 !important;
+      font-weight: 800 !important;
+    }}
+
+    /* 5. CORPORATE ARCHETYPE */
+    .archetype-corporate .info-card {{
+      border-radius: 4px !important;
+      border: 1px solid var(--card-border) !important;
+      border-top: 5px solid var(--accent) !important;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06) !important;
+    }}
+    .archetype-corporate .definition-card {{
+      border-radius: 4px !important;
+      border: 1px solid var(--card-border) !important;
+      border-top: 5px solid var(--accent) !important;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06) !important;
+    }}
+    .archetype-corporate .card-index-badge {{
+      border-radius: 2px !important;
+      background: var(--accent) !important;
+      color: #FFFFFF !important;
+    }}
+    .archetype-corporate .slide-category {{
+      letter-spacing: 0.12em !important;
+    }}
+    .archetype-corporate .title-pill {{
+      border-radius: 4px !important;
+    }}
+
     /* Print styles for pixel-perfect 16:9 PDF export */
     @media print {{
       @page {{
@@ -504,7 +729,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
   </style>
 </head>
 <body>
-  <div id="presentation-viewport">
+  <div id="presentation-viewport" class="archetype-{theme.archetype.value}">
     {slides_joined}
 
     <div id="nav-footer">

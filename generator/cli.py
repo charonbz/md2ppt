@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 from .parser import parse_slides_file
-from .theme_engine import list_available_themes, load_theme, DEFAULT_THEME_ID
+from .theme_engine import list_available_themes, list_available_archetypes, load_theme, DEFAULT_THEME_ID
 from .theme_generator import generate_ai_theme
 from .renderers import render_html_presentation, render_pptx_presentation, render_pdf_presentation
 
@@ -42,13 +42,26 @@ def main():
         "--theme",
         type=str,
         default=DEFAULT_THEME_ID,
-        help=f"Visual theme name to apply (default: {DEFAULT_THEME_ID})."
+        help=f"Visual color theme to apply (default: {DEFAULT_THEME_ID})."
+    )
+
+    parser.add_argument(
+        "--archetype",
+        type=str,
+        choices=["editorial", "cards", "neubrutalism", "terminal", "minimal", "corporate"],
+        help="Override the visual structural archetype (editorial, cards, neubrutalism, terminal, minimal, corporate)."
     )
 
     parser.add_argument(
         "--list-themes",
         action="store_true",
-        help="List all available presentation themes."
+        help="List all available presentation themes and their default archetypes."
+    )
+
+    parser.add_argument(
+        "--list-archetypes",
+        action="store_true",
+        help="List all 6 visual structural archetypes with their styling characteristics."
     )
 
     parser.add_argument(
@@ -76,19 +89,34 @@ def main():
 
     args = parser.parse_args()
 
-    # 1. Handle theme listing
-    if args.list_themes:
-        themes = list_available_themes()
-        print("\n🎨 Available themes:")
-        print("--------------------------------------------------")
-        for t in themes:
-            print(f" • {t['id']:<18} : {t['name']}")
-            if t['description']:
-                print(f"   └─ {t['description']}")
-        print("--------------------------------------------------\n")
+    # 1. Handle archetype listing
+    if args.list_archetypes:
+        archetypes = list_available_archetypes()
+        print("\n🏛️ Available visual archetypes (structural styling):")
+        print("=" * 64)
+        for a in archetypes:
+            print(f" • {a['id']:<14} : {a['name']}")
+            print(f"   ├─ Style    : {a['description']}")
+            print(f"   └─ Best for : {a['best_for']}")
+        print("=" * 64)
+        print("💡 Use with: ./run.py <dir> --theme <theme> --archetype <archetype>\n")
         return 0
 
-    # 2. Handle AI theme generation
+    # 2. Handle theme listing
+    if args.list_themes:
+        themes = list_available_themes()
+        print("\n🎨 Available themes (color palettes):")
+        print("=" * 64)
+        for t in themes:
+            arch_badge = f"[{t.get('archetype', 'cards')}]"
+            print(f" • {t['id']:<18} {arch_badge:<14} : {t['name']}")
+            if t['description']:
+                print(f"   └─ {t['description']}")
+        print("=" * 64)
+        print("💡 Override structural style with: --archetype <name>\n")
+        return 0
+
+    # 3. Handle AI theme generation
     if args.ai_theme:
         print(f"\n✨ Generating new theme based on description: '{args.ai_theme}'...")
         out_path = generate_ai_theme(args.ai_theme)
@@ -111,10 +139,12 @@ def main():
         print(f"❌ Error: 'slides.md' not found in directory: {slides_file}", file=sys.stderr)
         return 1
 
-    # Load theme
+    # Load theme & archetype
     try:
-        theme = load_theme(args.theme)
-        print(f"\n🎨 Applied theme: {theme.name} ({theme.id})")
+        theme = load_theme(args.theme, archetype_override=args.archetype)
+        override_note = f" (overridden via CLI)" if args.archetype else ""
+        print(f"\n🎨 Applied theme: {theme.name} [{theme.id}]")
+        print(f"🏛️ Applied archetype: {theme.archetype.value}{override_note}")
     except Exception as e:
         print(f"❌ Error loading theme: {e}", file=sys.stderr)
         return 1

@@ -15,6 +15,7 @@ Output ONLY a raw JSON object conforming to this schema without any markdown blo
   "id": "short_theme_id",
   "name": "Human Readable Name",
   "description": "Short description of the theme aesthetic",
+  "archetype": "cards",
   "colors": {
     "background": "#HEX",
     "card_bg": "#HEX",
@@ -54,6 +55,7 @@ def generate_ai_theme(description: str, output_id: Optional[str] = None) -> Path
 
     theme_id = output_id or theme_data.get("id") or _slugify(description[:20])
     theme_data["id"] = theme_id
+    theme_data.setdefault("archetype", "cards")
 
     THEMES_DIR.mkdir(parents=True, exist_ok=True)
     out_file = THEMES_DIR / f"{theme_id}.json"

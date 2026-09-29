@@ -61,20 +61,35 @@ A mérés a matematikai ismereteket négy átfogó kategóriába csoportosítja:
 
 ---
 
-## 🎨 Modular Themes & AI Theme Generation
+## 🎨 Modular Themes & Visual Archetypes
 
-Presentation styling is decoupled from content. Themes are stored as declarative JSON files in `generator/themes/`.
+Presentation styling is governed by two orthogonal dimensions:
+1. **Color Themes (`--theme`)**: Colors and palettes stored as declarative JSON in `generator/themes/`.
+2. **Structural Archetypes (`--archetype`)**: Layout, shapes, borders, and typography styles (`editorial`, `cards`, `neubrutalism`, `terminal`, `minimal`, `corporate`).
 
-### List Available Themes:
+### List Available Themes & Archetypes:
 ```bash
+# List all 6 visual archetypes (structural styles):
+./run.py --list-archetypes
+
+# List all available themes (color palettes) and their default archetypes:
 ./run.py --list-themes
 ```
 
-Built-in themes:
-- `modern_clean`: Crisp light card layout with blue accents (default)
-- `dark_mode`: Premium slate dark background with indigo accents
-- `emerald_growth`: Natural, fresh emerald green theme
-- `warm_academic`: Classic cream and burgundy editorial style
+### Orthogonal Combination & Overrides:
+```bash
+# Generate using a curated theme (uses the theme's default archetype):
+./run.py slideshow_1 --theme warm_academic
+
+# Override the structural archetype (e.g. apply neubrutalism structure to warm_academic colors):
+./run.py slideshow_1 --theme warm_academic --archetype neubrutalism
+
+# Try different archetypes:
+./run.py slideshow_1 --theme dark_terminal
+./run.py slideshow_1 --theme swiss_minimal
+./run.py slideshow_1 --theme corporate_navy
+./run.py slideshow_1 --theme bold_neubrutalism
+```
 
 ### Generate a New Theme with AI:
 Create a new theme via natural language prompt (in English or Hungarian):

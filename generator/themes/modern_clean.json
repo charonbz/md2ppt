@@ -2,6 +2,7 @@
   "id": "modern_clean",
   "name": "Modern Clean (Light & Crisp)",
   "description": "Professional modern light theme with crisp blue accents and soft shadows.",
+  "archetype": "cards",
   "colors": {
     "background": "#F8FAFC",
     "card_bg": "#FFFFFF",

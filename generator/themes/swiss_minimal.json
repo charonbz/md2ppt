@@ -1,0 +1,29 @@
+{
+  "id": "swiss_minimal",
+  "name": "Swiss Minimal (International Typographic)",
+  "description": "Stark borderless typography, oversized numbering, pure white background, and cardinal red accents.",
+  "archetype": "minimal",
+  "colors": {
+    "background": "#FFFFFF",
+    "card_bg": "#FFFFFF",
+    "card_border": "#F1F5F9",
+    "primary_text": "#0A0A0A",
+    "secondary_text": "#525252",
+    "accent": "#DC2626",
+    "accent_light": "#FEF2F2",
+    "badge_bg": "#F5F5F5",
+    "badge_text": "#171717",
+    "audio_btn_bg": "#0A0A0A",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "'Helvetica Neue', Helvetica, Arial, sans-serif",
+    "body_font": "'Helvetica Neue', Helvetica, Arial, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 0,
+    "card_shadow": "none",
+    "title_align": "left",
+    "border_width_px": 0
+  }
+}

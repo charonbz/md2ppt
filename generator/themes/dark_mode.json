@@ -2,6 +2,7 @@
   "id": "dark_mode",
   "name": "Dark Mode (Modern Slate)",
   "description": "Premium dark slate aesthetic with high-contrast text and indigo accents.",
+  "archetype": "cards",
   "colors": {
     "background": "#0F172A",
     "card_bg": "#1E293B",

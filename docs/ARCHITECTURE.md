@@ -91,13 +91,34 @@ slideshowGenerator/
   - **Continuous Numbering**: Sequential card slides maintain a running counter (e.g., Slide 3 displays badges `01, 02`, while Slide 4 continues with `03, 04`).
   - **Definition Slide**: Slides without bullet points containing descriptive paragraphs are formatted as highlighted definition/quote cards.
 
-### 4.2. Theming Engine (`generator/themes/`, `theme_engine.py`)
-- Themes are completely decoupled from presentation content.
-- Each theme is defined in a declarative JSON file specifying:
-  - Color palette (`background`, `card_bg`, `card_border`, `primary_text`, `secondary_text`, `accent`, `badge_bg`, `badge_text`).
-  - Typography (`title_font`, `body_font`).
-  - Geometries (`card_radius_px`, `card_shadow`, `border_width_px`).
-- **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON.
+### 4.2. Theming & Structural Archetypes (`generator/themes/`, `theme_engine.py`)
+Visual appearance is governed by two orthogonal dimensions:
+1. **Color Palette (Themes)**: Configured in `generator/themes/*.json` (e.g. `warm_academic.json`, `bold_neubrutalism.json`, `dark_terminal.json`). Controls color tokens (`background`, `card_bg`, `card_border`, `primary_text`, `secondary_text`, `accent`, `badge_bg`, `badge_text`).
+2. **Structural Styling (Archetypes)**: Defined by the `ArchetypeType` enum (`editorial`, `cards`, `neubrutalism`, `terminal`, `minimal`, `corporate`). Dictates card framing, border thickness, drop shadows, typography hierarchy, and shape geometry across all renderers.
+
+#### The 6 Visual Archetypes:
+- **`editorial`**: Refined academic/book/magazine aesthetic. Transparent cards with fine hairline dividing rules or subtle vertical left-accent lines, elegant Georgia serif typography, no heavy card boxes.
+- **`cards`**: Elevated modern floating UI. Rounded corners (12–16px), soft ambient drop-shadows, subtle border strokes, modern SaaS feel.
+- **`neubrutalism`**: High-contrast pop-art aesthetic. Thick solid black borders (2.5–3px), hard unblurred black offset drop shadows (`5px 5px 0px #000`), geometric sharp corners, bold punchy badges.
+- **`terminal`**: Hacker / developer console aesthetic. Monospace typography (`JetBrains Mono`, `Consolas`), dark surface, console prompt prefixes (`root@slides:~# `, `>_`), sharp geometry, and subtle grid feel.
+- **`minimal`**: Swiss International Typographic Style. Zero borders, zero shadows, transparent cards, oversized numeric indices (`01`, `02`), maximum whitespace, stark typographic contrast.
+- **`corporate`**: Executive consulting style (McKinsey / BCG slide archetype). Crisp geometry, solid color top header banner on cards, structured business layout.
+
+#### Orthogonal Mixing & CLI Overrides:
+Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for backwards compatibility). Users can override the structural style on the command line:
+```bash
+# Default pairing (warm_academic with editorial):
+./run.py slideshow_1 --theme warm_academic
+
+# Orthogonal override (warm_academic palette with neubrutalism structure):
+./run.py slideshow_1 --theme warm_academic --archetype neubrutalism
+
+# Discover all archetypes & themes:
+./run.py --list-archetypes
+./run.py --list-themes
+```
+
+- **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON with `"archetype": "cards"`.
 
 ### 4.3. HTML Renderer (`generator/renderers/html_renderer.py`)
 - **Zero-Dependency Standalone HTML**: Audio tracks are embedded directly into the HTML as Base64 data streams (`data:audio/mpeg;base64,...`). This bypasses browser `file:///` sandbox restrictions and makes the HTML completely portable.

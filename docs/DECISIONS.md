@@ -105,3 +105,23 @@ To ensure consistency across AI agents, code maintenance, and open development, 
 
 ### Rationale
 English is the universal standard for software engineering and AI agent tooling, while preserving full multilingual support for user slide decks.
+
+---
+
+## ADR-008: Orthogonal Visual Archetypes & Palette Themes
+
+### Context
+Themes previously only modified color hex values and border radiuses, causing all presentations to produce identical card structures regardless of the theme. The user requested radical visual variety and diverse slide aesthetics without introducing runtime LLM latency, breaking the Tri-Format principle (HTML, PPTX, PDF in sync), or bloating Markdown authoring syntax.
+
+### Decision
+Decouple visual styling into two orthogonal, independently configurable dimensions:
+1. **Palette Themes (`generator/themes/*.json`)**: Define color palettes and font families.
+2. **Structural Archetypes (`ArchetypeType` enum)**: Six distinct visual archetypes (`editorial`, `cards`, `neubrutalism`, `terminal`, `minimal`, `corporate`) governing shapes, border widths, drop shadows, header dividers, and typographic weights across all renderers.
+
+Themes specify their default archetype in JSON, and users can override it at generation time via the `--archetype <name>` CLI parameter.
+
+### Rationale
+- **Zero Code Duplication**: A unified rendering engine handles the visual variants conditionally, avoiding fragmented per-theme templates.
+- **Tri-Format Synchronization**: PPTX shapes (hard drop shadows, hairline dividers, top accent banners) and HTML CSS classes map 1:1, ensuring presentations look structurally identical across PowerPoint, standalone Web, and Vector PDF.
+- **Deterministic & Offline**: Provides dramatic visual diversity at instant build speeds without runtime LLM dependencies.
+

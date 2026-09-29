@@ -1,0 +1,29 @@
+{
+  "id": "corporate_navy",
+  "name": "Corporate Navy (Executive Consulting)",
+  "description": "Structured executive consulting aesthetic with top accent banners, sharp geometry, and deep navy tones.",
+  "archetype": "corporate",
+  "colors": {
+    "background": "#F8FAFC",
+    "card_bg": "#FFFFFF",
+    "card_border": "#CBD5E1",
+    "primary_text": "#0F172A",
+    "secondary_text": "#334155",
+    "accent": "#1E3A8A",
+    "accent_light": "#EFF6FF",
+    "badge_bg": "#1E3A8A",
+    "badge_text": "#FFFFFF",
+    "audio_btn_bg": "#1E3A8A",
+    "audio_btn_text": "#FFFFFF"
+  },
+  "fonts": {
+    "title_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    "body_font": "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+  },
+  "styles": {
+    "card_radius_px": 4,
+    "card_shadow": "0 4px 12px rgba(15, 23, 42, 0.06)",
+    "title_align": "left",
+    "border_width_px": 1
+  }
+}
