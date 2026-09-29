@@ -1,9 +1,11 @@
 import base64
+import html
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any
 from ..models import PresentationData, SlideData, SlideType, ThemeConfig
+from ..markdown_utils import render_markdown_html
 
 
 def render_html_presentation(pres: PresentationData, theme: ThemeConfig, dist_dir: Path) -> Path:
@@ -70,7 +72,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     for slide in pres.slides:
         audio_info = audio_assets.get(slide.index)
-        slides_html.append(_render_slide(slide, total_slides, theme, audio_info))
+        slides_html.append(_render_slide(slide, total_slides, theme, audio_info, deck_title=pres.title))
 
     slides_joined = "\n".join(slides_html)
 
@@ -322,6 +324,94 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       font-size: clamp(0.95rem, 1.35vw, 1.15rem);
       line-height: 1.55;
       color: var(--secondary-text);
+      flex: 1;
+    }}
+
+    /* Inline Markdown Elements */
+    strong {{
+      font-weight: 700;
+      color: var(--primary-text);
+    }}
+
+    em {{
+      font-style: italic;
+    }}
+
+    code {{
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      background: rgba(125, 125, 125, 0.12);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }}
+
+    /* Standard Lists */
+    .content-list {{
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 14px;
+    }}
+
+    .content-list li {{
+      position: relative;
+      padding-left: 28px;
+      font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+      line-height: 1.5;
+      color: var(--primary-text);
+    }}
+
+    .content-list li::before {{
+      content: "";
+      position: absolute;
+      left: 6px;
+      top: 10px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }}
+
+    /* Fenced Code Block */
+    .code-block {{
+      background: #0D1117;
+      border: 1px solid var(--card-border);
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }}
+
+    .code-header {{
+      background: rgba(255, 255, 255, 0.05);
+      padding: 8px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }}
+
+    .code-lang {{
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      font-family: monospace;
+    }}
+
+    .code-block pre {{
+      background: transparent;
+      padding: 20px 24px;
+      color: #E6EDF3;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: clamp(0.95rem, 1.4vw, 1.2rem);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-x: auto;
       flex: 1;
     }}
 
@@ -904,7 +994,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 </html>"""
 
 
-def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio_info: Optional[Dict[str, str]] = None) -> str:
+def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio_info: Optional[Dict[str, str]] = None, deck_title: str = "") -> str:
     audio_widget_html = ""
     audio_tag_html = ""
 
@@ -946,37 +1036,43 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio
         </audio>
         """
 
+    cat_label = html.escape(deck_title.upper()) if deck_title else "PREZENTÁCIÓ"
+
     if slide.slide_type == SlideType.TITLE:
+        main_title = render_markdown_html(slide.title)
+        author_text = render_markdown_html(slide.author or slide.subtitle)
+        pill_text = html.escape(deck_title) if deck_title else "PREZENTÁCIÓ"
         return f"""
         <div class="slide" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-title-container">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-              <div class="title-pill">PISA Kutatás &bull; Matematika</div>
+              <div class="title-pill">{pill_text}</div>
               {audio_widget_html}
             </div>
-            <h1 class="slide-main-title">{slide.title}</h1>
-            {f'<div class="slide-author">{slide.author}</div>' if slide.author else ''}
+            <h1 class="slide-main-title">{main_title}</h1>
+            {f'<div class="slide-author">{author_text}</div>' if author_text else ''}
           </div>
         </div>
         """
 
     elif slide.slide_type == SlideType.DEFINITION:
-        first_para = slide.paragraphs[0] if slide.paragraphs else ""
+        def_content = render_markdown_html(slide.quote or (slide.paragraphs[0] if slide.paragraphs else ""))
+        heading_title = render_markdown_html(slide.title)
         return f"""
         <div class="slide" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
-              <span class="slide-category">Alapfogalmak</span>
-              <h2 class="slide-heading">{slide.title}</h2>
+              <span class="slide-category">{cat_label}</span>
+              <h2 class="slide-heading">{heading_title}</h2>
             </div>
             {audio_widget_html}
           </div>
           <div class="slide-content">
             <div class="definition-card">
               <div class="definition-quote-icon">&ldquo;</div>
-              <p class="definition-text">{first_para}</p>
+              <p class="definition-text">{def_content}</p>
             </div>
           </div>
         </div>
@@ -986,49 +1082,94 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig, audio
         cards_html = []
         for card in slide.cards:
             badge_idx = f"0{card.card_index}" if card.card_index < 10 else str(card.card_index)
+            c_title = render_markdown_html(card.title)
+            c_desc = render_markdown_html(card.description)
             cards_html.append(f"""
             <div class="info-card">
               <div class="card-top">
                 <span class="card-index-badge">{badge_idx}</span>
-                <h3 class="card-title">{card.title}</h3>
+                <h3 class="card-title">{c_title}</h3>
               </div>
-              <p class="card-desc">{card.description}</p>
+              <p class="card-desc">{c_desc}</p>
             </div>
             """)
         cards_joined = "\n".join(cards_html)
+        heading_title = render_markdown_html(slide.title)
+
+        intro_html = ""
+        footer_html = ""
+        if slide.paragraphs:
+            intro_html = f'<p class="slide-intro" style="margin-bottom: 20px; font-size: clamp(1.05rem, 1.5vw, 1.25rem); color: var(--secondary-text); line-height: 1.5;">{render_markdown_html(slide.paragraphs[0])}</p>'
+            if len(slide.paragraphs) > 1:
+                footer_html = f'<p class="slide-footnote" style="margin-top: 18px; font-size: clamp(0.95rem, 1.2vw, 1.05rem); color: var(--secondary-text); font-style: italic;">{render_markdown_html(slide.paragraphs[1])}</p>'
 
         return f"""
         <div class="slide" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
-              <span class="slide-category">Mérési Területek</span>
-              <h2 class="slide-heading">{slide.title}</h2>
+              <span class="slide-category">{cat_label}</span>
+              <h2 class="slide-heading">{heading_title}</h2>
             </div>
             {audio_widget_html}
           </div>
           <div class="slide-content">
+            {intro_html}
             <div class="cards-grid">
               {cards_joined}
+            </div>
+            {footer_html}
+          </div>
+        </div>
+        """
+
+    elif slide.slide_type == SlideType.CODE:
+        lang = (slide.code_snippet.get("language") if slide.code_snippet else "code") or "code"
+        code_text = (slide.code_snippet.get("code") if slide.code_snippet else "") or ""
+        heading_title = render_markdown_html(slide.title)
+        return f"""
+        <div class="slide" id="slide-{slide.index}">
+          {audio_tag_html}
+          <div class="slide-header">
+            <div class="header-left">
+              <span class="slide-category">Kódrészlet</span>
+              <h2 class="slide-heading">{heading_title}</h2>
+            </div>
+            {audio_widget_html}
+          </div>
+          <div class="slide-content">
+            <div class="code-block">
+              <div class="code-header">
+                <span class="code-lang">{html.escape(lang)}</span>
+              </div>
+              <pre><code>{html.escape(code_text)}</code></pre>
             </div>
           </div>
         </div>
         """
 
     else:
-        # Standard fallback
-        paras_html = "".join(f"<p style='margin-bottom:16px; font-size:1.2rem;'>{p}</p>" for p in slide.paragraphs)
+        # Standard content slide (paragraphs + lists)
+        paras_html = "".join(f"<p style='margin-bottom:16px; font-size:clamp(1.1rem, 1.6vw, 1.35rem); line-height:1.6;'>{render_markdown_html(p)}</p>" for p in slide.paragraphs)
+        lists_html = ""
+        if slide.list_items:
+            items_str = "".join(f"<li>{render_markdown_html(item)}</li>" for item in slide.list_items)
+            lists_html = f"<ul class='content-list'>{items_str}</ul>"
+
+        heading_title = render_markdown_html(slide.title)
         return f"""
         <div class="slide" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
-              <h2 class="slide-heading">{slide.title}</h2>
+              <span class="slide-category">{cat_label}</span>
+              <h2 class="slide-heading">{heading_title}</h2>
             </div>
             {audio_widget_html}
           </div>
           <div class="slide-content">
             {paras_html}
+            {lists_html}
           </div>
         </div>
         """

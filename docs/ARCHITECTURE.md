@@ -80,16 +80,28 @@ slideshowGenerator/
 
 ## 4. Component Details
 
-### 4.1. Parser & Internal AST (`generator/parser.py`, `models.py`)
-- **Slide Delimiters**: Supports `# Title`, `# Slide`, and `---` horizontal rules.
+### 4.1. Parser & Internal AST (`generator/parser.py`, `models.py`, `markdown_utils.py`)
+- **Slide Delimiter Strategies**:
+  - **Explicit Rules Mode**: If a document uses `---` horizontal rules or legacy `# Slide` / `# Title` markers, slides split strictly at these markers. In-slide `# ` and `## ` headings belong to the slide as titles or subtitles without triggering unwanted slide splits.
+  - **Standard Markdown H1 Mode**: If a document contains neither `---` nor `# Slide`, top-level `# Heading` (H1) tags delimit slides.
+  - **Fenced Code Safety**: Fenced code blocks (```` ```python ... ``` ````) track state so internal `#` code comments are never misidentified as slide boundaries.
+- **Title Extraction & Sanitization (`markdown_utils.strip_markdown`)**:
+  - Automatically identifies titles from `# `, `## `, bold markers `**Title**`, or leading terms.
+  - Sanitizes formatting markers so PowerPoint headers and HTML titles display clean plain text without raw asterisks or hashes.
+- **In-Slide Markdown Structures**:
+  - **Definition Lists**: Pandoc/PHP Markdown Extra format (`Term\n: Definition line`) parsed directly into visual `CardItem` blocks.
+  - **Structured Bullet Cards**: Multi-line bullets with indented sub-properties (`- Term:\n  **Prop**: Val`) or single-line colon items (`Term: Description`) converted to `CardItem` objects.
+  - **Visual Cards (`### ` or `## `)**: Sub-headings within content lines create structured card blocks.
+  - **Blockquotes (`> `)**: Rendered as prominent definition / quote cards.
+  - **Fenced Code Blocks**: Highlighted monospace dark code container in PPTX and HTML.
+  - **Lists & Auto-Linking**: Bullet lists, numbered lists, and raw URL auto-linking.
+- **Dynamic Deck Branding**:
+  - Category lead tags and title pill badges dynamically display the presentation title (`PresentationData.title`) instead of hardcoded demo labels.
 - **Metadata Extraction**:
   - `<!-- audio: filename.m4a -->`: Associates an audio track with the slide.
   - `<!-- notes: ... -->`: Speaker notes.
-  - `<!-- type: ... -->`: Manual layout type override (`title`, `cards`, `definition`).
-- **Card Detection & Continuity**:
-  - Bullet items (`- Title: Description`) are transformed into visual `CardItem` blocks.
-  - **Continuous Numbering**: Sequential card slides maintain a running counter (e.g., Slide 3 displays badges `01, 02`, while Slide 4 continues with `03, 04`).
-  - **Definition Slide**: Slides without bullet points containing descriptive paragraphs are formatted as highlighted definition/quote cards.
+  - `<!-- type: ... -->`: Manual layout type override (`title`, `cards`, `definition`, `code`, `standard`).
+- **Continuous Numbering**: Sequential card slides maintain a running counter (e.g. `01, 02` on slide 3, continuing to `03, 04` on slide 4).
 
 ### 4.2. Theming & Structural Archetypes (`generator/themes/`, `theme_engine.py`)
 Visual appearance is governed by two orthogonal dimensions:

@@ -6,6 +6,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from ..models import PresentationData, SlideData, SlideType, ThemeConfig, ArchetypeType
+from ..markdown_utils import parse_markdown_runs
 
 
 def _get_font_name(theme: ThemeConfig) -> str:
@@ -20,6 +21,24 @@ def _get_font_name(theme: ThemeConfig) -> str:
     elif theme.archetype == ArchetypeType.CORPORATE:
         return "Calibri"
     return "Calibri"
+
+
+def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: Pt, default_color: RGBColor, is_title: bool = False):
+    """Parses inline Markdown and appends formatted TextRun objects to a PPTX paragraph."""
+    runs_data = parse_markdown_runs(text)
+    if not runs_data:
+        run = paragraph.add_run()
+        run.text = ""
+        return
+
+    for chunk_text, is_bold, is_italic, is_code in runs_data:
+        run = paragraph.add_run()
+        run.text = chunk_text
+        run.font.name = "Consolas" if is_code else default_font
+        run.font.size = default_size
+        run.font.color.rgb = default_color
+        run.font.bold = is_bold or is_title
+        run.font.italic = is_italic
 
 
 def render_pptx_presentation(pres: PresentationData, theme: ThemeConfig, dist_dir: Path) -> Path:
@@ -67,25 +86,36 @@ def render_pptx_presentation(pres: PresentationData, theme: ThemeConfig, dist_di
         cp.alignment = PP_ALIGN.RIGHT
 
         # 4. Render according to slide type and archetype
+        deck_title = pres.title
         if slide_data.slide_type == SlideType.TITLE:
             _render_pptx_title_slide(
                 slide, slide_data, theme,
-                primary_text_rgb, secondary_text_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb
+                primary_text_rgb, secondary_text_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb,
+                deck_title=deck_title
             )
         elif slide_data.slide_type == SlideType.DEFINITION:
             _render_pptx_definition_slide(
                 slide, slide_data, theme,
-                card_bg_rgb, card_border_rgb, primary_text_rgb, secondary_text_rgb, accent_rgb
+                card_bg_rgb, card_border_rgb, primary_text_rgb, secondary_text_rgb, accent_rgb,
+                deck_title=deck_title
             )
         elif slide_data.slide_type == SlideType.CARDS:
             _render_pptx_cards_slide(
                 slide, slide_data, theme,
-                card_bg_rgb, card_border_rgb, primary_text_rgb, secondary_text_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb
+                card_bg_rgb, card_border_rgb, primary_text_rgb, secondary_text_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb,
+                deck_title=deck_title
+            )
+        elif slide_data.slide_type == SlideType.CODE:
+            _render_pptx_code_slide(
+                slide, slide_data, theme,
+                primary_text_rgb, secondary_text_rgb, accent_rgb,
+                deck_title=deck_title
             )
         else:
             _render_pptx_standard_slide(
                 slide, slide_data, theme,
-                card_bg_rgb, card_border_rgb, primary_text_rgb, secondary_text_rgb, accent_rgb
+                card_bg_rgb, card_border_rgb, primary_text_rgb, secondary_text_rgb, accent_rgb,
+                deck_title=deck_title
             )
 
     prs.save(out_file)
@@ -138,16 +168,18 @@ def _add_audio_widget(slide, audio_path: Path, accent_rgb, badge_bg_rgb, badge_t
 
 
 def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
-                             primary_rgb, secondary_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb):
+                             primary_rgb, secondary_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb,
+                             deck_title: str = ""):
     font_name = _get_font_name(theme)
     arch = theme.archetype
+    badge_label = deck_title.upper() if deck_title else "PREZENTÁCIÓ"
 
     # 1. Category badge
     if arch == ArchetypeType.EDITORIAL:
         # Subtle non-enclosed text with fine underline
         cat_box = slide.shapes.add_textbox(Inches(1.0), Inches(1.8), Inches(4.5), Inches(0.45))
         p = cat_box.text_frame.paragraphs[0]
-        p.text = "PISA KUTATÁS • MATEMATIKA"
+        p.text = badge_label
         p.font.name = font_name
         p.font.size = Pt(12)
         p.font.bold = True
@@ -165,7 +197,7 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         cat_badge.line.color.rgb = RGBColor(0, 0, 0)
         cat_badge.line.width = Pt(2)
         p = cat_badge.text_frame.paragraphs[0]
-        p.text = "PISA KUTATÁS • MATEMATIKA"
+        p.text = badge_label
         p.font.name = font_name
         p.font.size = Pt(11)
         p.font.bold = True
@@ -179,7 +211,7 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         cat_badge.line.fill.background()
         p = cat_badge.text_frame.paragraphs[0]
         prefix = "[INIT] " if arch == ArchetypeType.TERMINAL else ""
-        p.text = f"{prefix}PISA KUTATÁS • MATEMATIKA"
+        p.text = f"{prefix}{badge_label}"
         p.font.name = font_name
         p.font.size = Pt(11)
         p.font.bold = True
@@ -191,11 +223,7 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
     tf = title_box.text_frame
     tf.word_wrap = True
     tp = tf.paragraphs[0]
-    tp.text = slide_data.title
-    tp.font.name = font_name
-    tp.font.size = Pt(44)
-    tp.font.bold = True
-    tp.font.color.rgb = primary_rgb
+    _add_formatted_runs(tp, slide_data.title, font_name, Pt(44), primary_rgb, is_title=True)
 
     # 3. Accent decorative line
     if arch != ArchetypeType.MINIMAL:
@@ -209,18 +237,17 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         author_text = slide_data.author or slide_data.subtitle
         author_box = slide.shapes.add_textbox(Inches(1.0), Inches(5.2), Inches(10.0), Inches(0.8))
         ap = author_box.text_frame.paragraphs[0]
-        ap.text = author_text
-        ap.font.name = font_name
-        ap.font.size = Pt(22)
-        ap.font.color.rgb = secondary_rgb
+        _add_formatted_runs(ap, author_text, font_name, Pt(22), secondary_rgb)
 
 
 def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConfig,
-                                  card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb):
-    _add_header(slide, "ALAPFOGALMAK", slide_data.title, accent_rgb, primary_rgb, theme)
+                                  card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
+                                  deck_title: str = ""):
+    cat_label = deck_title.upper() if deck_title else "DEFINÍCIÓ"
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
-    first_para = slide_data.paragraphs[0] if slide_data.paragraphs else ""
+    first_para = slide_data.quote or (slide_data.paragraphs[0] if slide_data.paragraphs else "")
 
     if arch == ArchetypeType.EDITORIAL:
         # Elegant hairline top & bottom dividers, serif italic text, transparent card
@@ -238,12 +265,8 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf = text_box.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
-        p.text = first_para
-        p.font.name = font_name
-        p.font.size = Pt(22)
-        p.font.italic = True
-        p.font.color.rgb = primary_rgb
         p.line_spacing = 1.4
+        _add_formatted_runs(p, first_para, font_name, Pt(22), primary_rgb)
 
     elif arch == ArchetypeType.NEUBRUTALISM:
         # Black hard shadow offset rectangle
@@ -268,11 +291,8 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf = text_box.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
-        p.text = first_para
-        p.font.name = font_name
-        p.font.size = Pt(20)
-        p.font.color.rgb = primary_rgb
         p.line_spacing = 1.35
+        _add_formatted_runs(p, first_para, font_name, Pt(20), primary_rgb)
 
     elif arch == ArchetypeType.MINIMAL:
         # Transparent card, bold left vertical bar
@@ -285,11 +305,8 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf = text_box.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
-        p.text = first_para
-        p.font.name = font_name
-        p.font.size = Pt(22)
-        p.font.color.rgb = primary_rgb
         p.line_spacing = 1.4
+        _add_formatted_runs(p, first_para, font_name, Pt(22), primary_rgb)
 
     elif arch == ArchetypeType.CORPORATE:
         # Sharp rectangle + top accent banner strip
@@ -308,11 +325,8 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf = text_box.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
-        p.text = first_para
-        p.font.name = font_name
-        p.font.size = Pt(19)
-        p.font.color.rgb = primary_rgb
         p.line_spacing = 1.35
+        _add_formatted_runs(p, first_para, font_name, Pt(19), primary_rgb)
 
     else:
         # Terminal & Cards (modern cards)
@@ -332,26 +346,44 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf = text_box.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
-        p.text = first_para
-        p.font.name = font_name
-        p.font.size = Pt(19)
-        p.font.color.rgb = primary_rgb
         p.line_spacing = 1.35
+        _add_formatted_runs(p, first_para, font_name, Pt(19), primary_rgb)
 
 
 def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
-                             card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb):
-    _add_header(slide, "MÉRÉSI TERÜLETEK", slide_data.title, accent_rgb, primary_rgb, theme)
+                             card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb,
+                             deck_title: str = ""):
+    cat_label = deck_title.upper() if deck_title else "ÁTTEKINTÉS"
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
 
-    num_cards = len(slide_data.cards)
-    card_w = Inches(5.45) if num_cards == 2 else Inches(11.333) / max(1, num_cards) - Inches(0.3)
-    gap = Inches(0.43) if num_cards == 2 else Inches(0.3)
-    top = Inches(2.2)
-    height = Inches(4.3)
+    has_intro = bool(slide_data.paragraphs)
+    top = Inches(2.9) if has_intro else Inches(2.2)
+    height = Inches(3.7) if has_intro else Inches(4.3)
 
-    for i, c in enumerate(slide_data.cards):
+    if has_intro:
+        intro_box = slide.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(11.333), Inches(0.65))
+        itf = intro_box.text_frame
+        itf.word_wrap = True
+        ip = itf.paragraphs[0]
+        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, Pt(16), secondary_rgb)
+
+    num_cards = max(1, min(4, len(slide_data.cards)))
+    if num_cards == 1:
+        card_w = Inches(11.333)
+        gap = Inches(0)
+    elif num_cards == 2:
+        card_w = Inches(5.45)
+        gap = Inches(0.43)
+    elif num_cards == 3:
+        card_w = Inches(3.5)
+        gap = Inches(0.41)
+    else:  # 4 cards
+        card_w = Inches(2.6)
+        gap = Inches(0.31)
+
+    for i, c in enumerate(slide_data.cards[:4]):
         left = Inches(1.0) + i * (card_w + gap)
 
         if arch == ArchetypeType.EDITORIAL:
@@ -375,22 +407,15 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            tp.text = c.title
-            tp.font.name = font_name
-            tp.font.size = Pt(21)
-            tp.font.bold = True
-            tp.font.color.rgb = primary_rgb
+            _add_formatted_runs(tp, c.title, font_name, Pt(21), primary_rgb, is_title=True)
 
             # Desc
             desc_box = slide.shapes.add_textbox(left + Inches(0.2), top + Inches(1.8), card_w - Inches(0.3), Inches(2.2))
             tf_d = desc_box.text_frame
             tf_d.word_wrap = True
             dp = tf_d.paragraphs[0]
-            dp.text = c.description
-            dp.font.name = font_name
-            dp.font.size = Pt(16)
-            dp.font.color.rgb = secondary_rgb
             dp.line_spacing = 1.35
+            _add_formatted_runs(dp, c.description, font_name, Pt(16), secondary_rgb)
 
         elif arch == ArchetypeType.NEUBRUTALISM:
             # Hard black shadow shape
@@ -429,21 +454,14 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            tp.text = c.title
-            tp.font.name = font_name
-            tp.font.size = Pt(20)
-            tp.font.bold = True
-            tp.font.color.rgb = primary_rgb
+            _add_formatted_runs(tp, c.title, font_name, Pt(20), primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
             tf_d = desc_box.text_frame
             tf_d.word_wrap = True
             dp = tf_d.paragraphs[0]
-            dp.text = c.description
-            dp.font.name = font_name
-            dp.font.size = Pt(16)
-            dp.font.color.rgb = secondary_rgb
             dp.line_spacing = 1.3
+            _add_formatted_runs(dp, c.description, font_name, Pt(16), secondary_rgb)
 
         elif arch == ArchetypeType.MINIMAL:
             # Transparent cards, oversized numeric badge above title
@@ -459,21 +477,14 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            tp.text = c.title
-            tp.font.name = font_name
-            tp.font.size = Pt(21)
-            tp.font.bold = True
-            tp.font.color.rgb = primary_rgb
+            _add_formatted_runs(tp, c.title, font_name, Pt(21), primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left, top + Inches(1.9), card_w, Inches(2.2))
             tf_d = desc_box.text_frame
             tf_d.word_wrap = True
             dp = tf_d.paragraphs[0]
-            dp.text = c.description
-            dp.font.name = font_name
-            dp.font.size = Pt(16)
-            dp.font.color.rgb = secondary_rgb
             dp.line_spacing = 1.35
+            _add_formatted_runs(dp, c.description, font_name, Pt(16), secondary_rgb)
 
         elif arch == ArchetypeType.CORPORATE:
             # Sharp rectangle + top accent banner
@@ -504,21 +515,14 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            tp.text = c.title
-            tp.font.name = font_name
-            tp.font.size = Pt(20)
-            tp.font.bold = True
-            tp.font.color.rgb = primary_rgb
+            _add_formatted_runs(tp, c.title, font_name, Pt(20), primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.35), top + Inches(2.1), card_w - Inches(0.7), Inches(1.9))
             tf_d = desc_box.text_frame
             tf_d.word_wrap = True
             dp = tf_d.paragraphs[0]
-            dp.text = c.description
-            dp.font.name = font_name
-            dp.font.size = Pt(15)
-            dp.font.color.rgb = secondary_rgb
             dp.line_spacing = 1.3
+            _add_formatted_runs(dp, c.description, font_name, Pt(15), secondary_rgb)
 
         else:
             # Terminal & Modern Cards
@@ -546,36 +550,77 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
             title_prefix = "> " if arch == ArchetypeType.TERMINAL else ""
-            tp.text = f"{title_prefix}{c.title}"
-            tp.font.name = font_name
-            tp.font.size = Pt(20)
-            tp.font.bold = True
-            tp.font.color.rgb = primary_rgb
+            _add_formatted_runs(tp, f"{title_prefix}{c.title}", font_name, Pt(20), primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
             tf_d = desc_box.text_frame
             tf_d.word_wrap = True
             dp = tf_d.paragraphs[0]
-            dp.text = c.description
-            dp.font.name = font_name
-            dp.font.size = Pt(16)
-            dp.font.color.rgb = secondary_rgb
             dp.line_spacing = 1.3
+            _add_formatted_runs(dp, c.description, font_name, Pt(16), secondary_rgb)
+
+
+def _render_pptx_code_slide(slide, slide_data: SlideData, theme: ThemeConfig,
+                            primary_rgb, secondary_rgb, accent_rgb,
+                            deck_title: str = ""):
+    _add_header(slide, "KÓDRÉSZLET", slide_data.title, accent_rgb, primary_rgb, theme)
+    lang = (slide_data.code_snippet.get("language") if slide_data.code_snippet else "code") or "code"
+    code_text = (slide_data.code_snippet.get("code") if slide_data.code_snippet else "") or ""
+
+    box = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(2.2), Inches(11.333), Inches(4.3))
+    box.fill.solid()
+    box.fill.fore_color.rgb = RGBColor(13, 17, 23)
+    box.line.color.rgb = accent_rgb
+    box.line.width = Pt(1)
+
+    lbl = slide.shapes.add_textbox(Inches(1.2), Inches(2.3), Inches(4.0), Inches(0.4))
+    lp = lbl.text_frame.paragraphs[0]
+    lp.text = f"// LANGUAGE: {lang.upper()}"
+    lp.font.name = "Consolas"
+    lp.font.size = Pt(11)
+    lp.font.bold = True
+    lp.font.color.rgb = accent_rgb
+
+    code_box = slide.shapes.add_textbox(Inches(1.2), Inches(2.8), Inches(10.9), Inches(3.5))
+    tf = code_box.text_frame
+    tf.word_wrap = True
+    lines = code_text.splitlines()[:14]
+    for idx, line in enumerate(lines):
+        p = tf.add_paragraph() if idx > 0 else tf.paragraphs[0]
+        p.text = line
+        p.font.name = "Consolas"
+        p.font.size = Pt(13)
+        p.font.color.rgb = RGBColor(230, 237, 243)
 
 
 def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig,
-                                card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb):
-    _add_header(slide, "ÁTTEKINTÉS", slide_data.title, accent_rgb, primary_rgb, theme)
+                                card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
+                                deck_title: str = ""):
+    cat_label = deck_title.upper() if deck_title else "ÁTTEKINTÉS"
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     tb = slide.shapes.add_textbox(Inches(1.0), Inches(2.2), Inches(11.333), Inches(4.3))
     tf = tb.text_frame
     tf.word_wrap = True
+    first = True
     for p_text in slide_data.paragraphs:
-        p = tf.add_paragraph()
-        p.text = p_text
-        p.font.name = font_name
-        p.font.size = Pt(18)
-        p.font.color.rgb = primary_rgb
+        p = tf.paragraphs[0] if first else tf.add_paragraph()
+        first = False
+        p.space_after = Pt(12)
+        _add_formatted_runs(p, p_text, font_name, Pt(18), primary_rgb)
+
+    for item_text in slide_data.list_items:
+        p = tf.paragraphs[0] if first else tf.add_paragraph()
+        first = False
+        p.space_after = Pt(8)
+        p.level = 0
+        bullet_run = p.add_run()
+        bullet_run.text = "• "
+        bullet_run.font.name = font_name
+        bullet_run.font.size = Pt(18)
+        bullet_run.font.bold = True
+        bullet_run.font.color.rgb = accent_rgb
+        _add_formatted_runs(p, item_text, font_name, Pt(18), primary_rgb)
 
 
 def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme: ThemeConfig):
@@ -597,11 +642,7 @@ def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme
     tf = title_box.text_frame
     tf.word_wrap = True
     tp = tf.paragraphs[0]
-    tp.text = title
-    tp.font.name = font_name
-    tp.font.size = Pt(28)
-    tp.font.bold = True
-    tp.font.color.rgb = primary_rgb
+    _add_formatted_runs(tp, title, font_name, Pt(28), primary_rgb, is_title=True)
 
     # Editorial hairline header separator
     if arch == ArchetypeType.EDITORIAL:
@@ -609,4 +650,5 @@ def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme
         hdr_rule.fill.solid()
         hdr_rule.fill.fore_color.rgb = RGBColor(*theme.hex_to_rgb(theme.colors.get('card_border', '#EADBCE')))
         hdr_rule.line.fill.background()
+
 

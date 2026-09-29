@@ -125,3 +125,34 @@ Themes specify their default archetype in JSON, and users can override it at gen
 - **Tri-Format Synchronization**: PPTX shapes (hard drop shadows, hairline dividers, top accent banners) and HTML CSS classes map 1:1, ensuring presentations look structurally identical across PowerPoint, standalone Web, and Vector PDF.
 - **Deterministic & Offline**: Provides dramatic visual diversity at instant build speeds without runtime LLM dependencies.
 
+---
+
+## ADR-009: Comprehensive Markdown Support & AST Lexer Architecture
+
+### Context
+Users authoring slide decks expect standard Markdown structures to work intuitively:
+1. Standard slide delimiters (`---` and `# ` headings) without breaking legacy `# Title` and `# Slide` formats.
+2. In-slide structures: Definition lists (`Term\n: Definition`), indented multi-line bullets (`- Term:\n  **Prop**: Val`), unbulleted key-value pairs, fenced code blocks (` ```python ... ``` `), blockquotes (`> `), and standard lists.
+3. Inline Markdown formatting: `**bold**`, `*italic*`, `` `code` ``, `[link](url)`, and raw URLs rendered natively across HTML tags and PowerPoint `Run` objects.
+4. Clean presentation titles: Titles extracted from headings or bold phrases without leaking markdown syntax (e.g. asterisks or colons) into PowerPoint and HTML titles.
+
+### Decision
+1. **Dynamic Delimiter Strategy (`split_into_raw_slides`)**:
+   - If `---` or `# Slide` / `# Title` markers exist, they act as strict slide delimiters; `# ` or `## ` within slides do not create phantom slides.
+   - If neither marker exists, top-level `# ` headings delimit slides.
+   - Fenced code blocks are tracked with state flags so code comments (e.g. `# comment`) never trigger slide breaks.
+2. **AST Lexer & Run Parser (`markdown_utils.py`)**:
+   - `render_markdown_html(text)` converts inline tokens to safe HTML tags and auto-links raw URLs.
+   - `parse_markdown_runs(text)` parses linear runs of `(chunk, is_bold, is_italic, is_code)` tuples for `python-pptx` native formatting without raw markup characters.
+   - `strip_markdown(text)` produces pristine text strings for slide titles and header shapes.
+3. **Structured Content Extraction (`_parse_content_structures`)**:
+   - Automatically categorizes definition lists, indented bullets, and colon-delimited pairs into visual `CardItem` blocks.
+   - Dedicated slide types (`SlideType.CODE`, `SlideType.CARDS`, `SlideType.DEFINITION`, `SlideType.STANDARD`, `SlideType.TITLE`).
+4. **Dynamic Deck Branding**:
+   - Presentation title (`PresentationData.title`) replaces hardcoded demo strings across title badges and category leads.
+
+### Rationale
+- Completely eliminates syntax surprises for users writing plain or extended Markdown.
+- Preserves 100% backward compatibility with existing decks (`slideshow_1`).
+- Delivers visually stunning, structured card and code layouts in HTML, PPTX, and PDF with zero manual configuration.
+

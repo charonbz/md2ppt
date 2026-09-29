@@ -8,6 +8,7 @@ class SlideType(str, Enum):
     TITLE = "title"
     DEFINITION = "definition"
     CARDS = "cards"
+    CODE = "code"
     STANDARD = "standard"
 
 
@@ -35,8 +36,11 @@ class SlideData:
     title: str = ""
     subtitle: str = ""
     author: str = ""
+    quote: Optional[str] = None
     paragraphs: List[str] = field(default_factory=list)
     cards: List[CardItem] = field(default_factory=list)
+    list_items: List[str] = field(default_factory=list)
+    code_snippet: Optional[Dict[str, str]] = None
     audio_filename: Optional[str] = None
     audio_path: Optional[Path] = None
     notes: Optional[str] = None
