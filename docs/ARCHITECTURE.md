@@ -162,26 +162,38 @@ Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for 
 
 - **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON with `"archetype": "cards"`.
 
-### 4.3. HTML Renderer (`generator/renderers/html_renderer.py`)
+### 4.3. Adaptive Density Tiers (`generator/models.py`, `generator/parser.py`)
+To prevent sparse slides from having tiny fonts while ensuring content-heavy slides never overflow the 16:9 canvas, the parser automatically assigns every slide a discrete density tier:
+- **`DensityTier.SPACIOUS`**: For light slides (1–2 cards, $\le 3$ short bullets, or concise quotes). Features bold, dominant hero typography (main titles up to 76px / Pt(58), headers up to 56px / Pt(38), body/bullets up to 34px / Pt(28), definitions up to 40px / Pt(30), and generous padding).
+- **`DensityTier.BALANCED`**: For standard content (3–4 cards, 4–5 bullets). Provides confident, high-impact presentation typography (main titles 64px / Pt(50), headers 48px / Pt(32), body/bullets 28px / Pt(22), definitions 32px / Pt(24)).
+- **`DensityTier.COMPACT`**: For dense slides (5+ cards, 6+ list items, tables, code). Maintains strict presentation readability thresholds (main titles 54px / Pt(42), headers 40px / Pt(26), body/bullets 24px / Pt(18)) rather than shrinking into illegible document text.
+
+### 4.4. HTML Renderer (`generator/renderers/html_renderer.py`)
 - **Zero-Dependency Standalone HTML**: Audio tracks are embedded directly into the HTML as Base64 data streams (`data:audio/mpeg;base64,...`). This bypasses browser `file:///` sandbox restrictions and makes the HTML completely portable.
 - **Automatic MP3 Transcoding**: If `ffmpeg` is present, proprietary or container-specific audio formats (such as Samsung `3gp4` M4A files) are converted to standard MP3.
 - **Multi-Source Audio Fallback**: The `<audio>` element provides three fallback sources: embedded Base64 MP3, relative MP3 file, and original file.
-- **16:9 Canvas**: Responsive aspect ratio (`aspect-ratio: 16/9; width: min(100vw, calc(100vh * 16 / 9));`).
+- **Virtual 16:9 Scale-to-Fit Canvas (`1600 × 900 px`)**:
+  - The viewport is designed as a fixed virtual canvas of `1600 × 900 px` centered inside `#presentation-stage`.
+  - On resize or orientation changes, JavaScript dynamically calculates `scale = Math.min(window.innerWidth / 1600, window.innerHeight / 900)` and applies `transform: scale(scale)` to `#presentation-viewport`.
+  - **Zero Mobile Clipping**: Completely prevents mobile devices (smartphones in portrait or landscape) from clipping bottom elements or overflowing viewport bounds.
+- **Mobile Touch Swipe Gestures**: Supports native touch navigation (`touchstart` / `touchend`) allowing users on mobile phones or tablets to swipe left/right to change slides seamlessly.
 - **Interactive Controls**: Keyboard navigation (arrow keys, spacebar, PgUp/PgDown, `F` for fullscreen), live time tracking (`Playing (0:02 / 0:07)`), and animated wave bars.
 
-### 4.4. PowerPoint Renderer (`generator/renderers/pptx_renderer.py`)
+### 4.5. PowerPoint Renderer (`generator/renderers/pptx_renderer.py`)
 - Uses `python-pptx` to build 16:9 widescreen slides (`13.333 × 7.5` inches).
+- Synchronized with `slide.density_tier`: dynamically scales title `Pt(...)`, body text, card labels, and paragraph spacing across spacious, balanced, and compact tiers.
 - Renders cards and content blocks as native vector rounded shapes colored according to the selected theme.
 - Embeds audio directly into the `.pptx` ZIP package (`ppt/media/media1.m4a`) as a native media shape (`<p14:media>` and `<a:hlinkClick action="ppaction://media">`), triggering playback on click.
 
-### 4.5. PDF Renderer (`generator/renderers/pdf_renderer.py`)
+### 4.6. PDF Renderer (`generator/renderers/pdf_renderer.py`)
 - Leverages the print stylesheet in the HTML (`@media print { @page { size: 16in 9in; margin: 0; } }`).
+- Resets stage and viewport transforms (`transform: none !important; width: 16in !important; height: auto !important;`) to ensure exact 16in × 9in vector page breaks.
 - Executes Headless Google Chrome:
   ```bash
   google-chrome-stable --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=dist/presentation.pdf dist/index.html
   ```
 - Produces clean, vector-rendered, 16:9 widescreen PDF slides.
 
-### 4.6. Reusable TCP Web Server (`generator/cli.py`)
+### 4.7. Reusable TCP Web Server (`generator/cli.py`)
 - Built-in `--serve` command launches a local HTTP server for testing.
 - **Instant Port Reuse**: Implements `ReusableTCPServer` with `SO_REUSEADDR` and `SO_REUSEPORT`, ensuring that on `Ctrl + C`, the socket descriptor is immediately closed without lingering in Linux `TIME_WAIT`.

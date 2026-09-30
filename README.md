@@ -1,8 +1,8 @@
 # Slideshow Generator 🎬🎙️
 
 A presentation generation platform that transforms Markdown outlines and attached audio recordings into presentations across three first-class formats:
-1. **PowerPoint (.pptx)**: 16:9 widescreen presentation with native embedded media objects (click-to-play narration).
-2. **Interactive Web Presentation (.html)**: Zero-dependency, responsive HTML5 player with card-based layouts, keyboard navigation, and embedded Base64 audio with real-time playback tracking.
+1. **PowerPoint (.pptx)**: 16:9 widescreen presentation with native embedded media objects (click-to-play narration) and adaptive typography.
+2. **Interactive Web Presentation (.html)**: Zero-dependency, mobile-responsive HTML5 player with a virtual canvas scale-to-fit (guaranteed 100% visible on any screen with zero clipping), mobile touch swipe gestures, keyboard navigation, and embedded Base64 audio.
 3. **Vector PDF (.pdf)**: Pixel-perfect, 16:9 widescreen printable and presentable vector PDF.
 
 ---
@@ -243,8 +243,8 @@ To create themes with external LLMs (Claude, ChatGPT), see [`generator/themes/TH
 ## ⌨️ Web Slideshow Controls
 
 When viewing `dist/index.html`:
-* **Next Slide**: `Right Arrow` (`→`), `Spacebar`, or `PageDown`
-* **Previous Slide**: `Left Arrow` (`←`) or `PageUp`
+* **Next Slide**: `Right Arrow` (`→`), `Spacebar`, `PageDown`, or **Swipe Left** on touch devices.
+* **Previous Slide**: `Left Arrow` (`←`), `PageUp`, or **Swipe Right** on touch devices.
 * **First / Last Slide**: `Home` / `End`
 * **Fullscreen**: `F` key
 * **Audio Playback**: Click the **Narration** button in the slide header to play or pause.

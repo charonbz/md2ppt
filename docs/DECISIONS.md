@@ -193,3 +193,75 @@ To achieve full parity with modern Markdown feature sets (e.g., Markdown Guide C
 - Preserves the Zero-Dependency offline architecture for HTML and PDF exports.
 - Delivers native, editable PowerPoint tables and properly proportioned media assets.
 
+---
+
+## ADR-011: Virtual Canvas Scale-to-Fit and Adaptive Density Tiers
+
+### Context
+User feedback highlighted two critical usability and presentation quality issues:
+1. **Mobile Viewport Clipping**: On smartphones (especially in portrait mode, e.g. 390x844px), slides forced a rigid `height: min(100vh, calc(100vw * 9 / 16))` (around ~219px tall). Content cards, padded headings, and lists exceeded 219px inside the letterbox, and `overflow: hidden` truncated the bottom of every slide on mobile screens.
+2. **Typography Density Mismatch**: Slides with minimal content (1–2 cards or 2 bullets) suffered from tiny, underwhelming fonts (`clamp(...)` evaluated down to 14–16px), making presentation slides feel empty and unreadable from a distance. The user explicitly requested: *"If there isn't much content on a slide, it shouldn't be tiny. If there is a lot of content, keep it on one slide with smaller fonts, but light slides must be big and readable."*
+
+### Decision
+1. **Virtual Coordinate Canvas (`1600 × 900 px`) & CSS Scale-to-Fit**:
+   - The HTML slideshow uses a stage container (`#presentation-stage`, `100vw × 100vh`) with flex centering.
+   - The presentation viewport (`#presentation-viewport`) is defined as a fixed coordinate space of `1600 × 900 px`.
+   - On window resize or device orientation changes, JavaScript computes:
+     $$\text{scale} = \min\left(\frac{W_{\text{window}}}{1600}, \frac{H_{\text{window}}}{900}\right)$$
+     and applies `transform: scale(scale)` with `transform-origin: center center`.
+   - **Guarantees zero clipping**: On any device (mobile portrait, mobile landscape, ultrawide desktop), the entire 16:9 slide is 100% visible and unclipped.
+   - Preserves `@media print` unscaled vector export (`transform: none !important; width: 16in !important; height: auto !important;`) for 16in × 9in PDF generation.
+
+2. **Mobile Touch Swipe Navigation**:
+   - Added `touchstart` and `touchend` swipe gesture listeners in `html_renderer.py` allowing mobile viewers to swipe left to advance or right to go back.
+
+3. **Discrete Density Tiers (`spacious`, `balanced`, `compact`)**:
+   - Rather than unpredictable floating-point font equations per slide, implemented a discrete 3-tier heuristic classifier in `generator/models.py` (`calculate_density_tier`):
+     - **`spacious`**: 1–2 cards, $\le 3$ bullets, or short quotes. Sets bold typography (headings 46–64px / 32pt, body 24–28px / 24pt, spacious card paddings).
+     - **`balanced`**: 3–4 cards, 4–5 bullets. Confident presentation typography (~30% larger than legacy defaults).
+     - **`compact`**: 5+ cards, 6+ bullets, dense tables or long code. Scaled to comfortably fit within 900px vertical space without overflowing.
+   - In `html_renderer.py`, `.slide` is tagged with `.density-{slide.density_tier.value}` and styled via semantic classes (`.slide-para`, `.slide-intro`, `.slide-footnote`).
+   - In `pptx_renderer.py`, `slide.density_tier` drives title `Pt(...)`, body `Pt(...)`, card labels, and paragraph spacing.
+
+### Rationale
+- Completely solves mobile responsiveness with zero layout breaks across portrait and landscape orientations.
+- Provides visual rhythm and punchy typography without artificially splitting user-authored slides.
+- Synchronized 1:1 across Web player, PowerPoint, and PDF exports.
+
+---
+
+## ADR-012: Presentation Typography Scale-Up and Readability Standards
+
+### Context
+User feedback emphasized that presentation slides must follow the "less is more" rule rather than functioning as dense reading documents:
+> *"A slideon a betuk eleg kicsik. Egy jo slideon nincs sok tartalom, ugy erzem egy kicsit sok mindent akarsz razsufolni."*
+*(The fonts on the slide are rather small. On a good slide there isn't much content, I feel like you want to cram too much stuff onto it.)*
+
+Previous baseline font sizes on the 1600×900 canvas (18px–22px body, 15px card descriptions, Pt(11)–Pt(14) in PPTX) were too small when scaled on mobile or viewed from a distance, producing an overly dense document look instead of a confident, bold presentation feel.
+
+### Decision
+1. **Scaled Baseline Typography Across All Density Tiers (HTML & PPTX Parity)**:
+   - **Spacious Tier**:
+     - Main titles: 76px / Pt(58) (previously 64px / Pt(50)).
+     - Slide headings: 56px / Pt(38) (previously 46px / Pt(32)).
+     - Body text & list items: 34px / Pt(28) (previously 28px / Pt(24)).
+     - Definitions & quotes: 40px / Pt(30) (previously 34px / Pt(26)).
+     - Cards: titles 36px / Pt(28), descriptions 26px / Pt(20).
+   - **Balanced Tier**:
+     - Main titles: 64px / Pt(50) (previously 52px / Pt(44)).
+     - Slide headings: 48px / Pt(32) (previously 38px / Pt(27)).
+     - Body text & list items: 28px / Pt(22) (previously 22px / Pt(18)).
+     - Definitions & quotes: 32px / Pt(24) (previously 26px / Pt(20)).
+     - Cards: titles 30px / Pt(23), descriptions 22px / Pt(17).
+   - **Compact Tier (Strict Readability Floor)**:
+     - Established a firm presentation readability floor: body text never drops below 24px in HTML / Pt(18) in PPTX.
+     - Main titles 54px / Pt(42), headings 40px / Pt(26), card descriptions 18px / Pt(14).
+2. **Generous Spacing & Breathing Room**:
+   - Expanded grid gaps, card padding, paragraph margins, and bullet gaps across all archetypes to give content room to breathe and eliminate the crammed feel.
+
+### Rationale
+- Slide content is instantly readable from distance, on smartphones, and on conference projectors.
+- Reinforces the presentation philosophy that slides are high-impact visual anchors rather than dense reading matter.
+- Fully synchronized across HTML5, PowerPoint OpenXML, and headless Chromium PDF exports.
+
+

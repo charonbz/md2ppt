@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
-from .models import SlideData, SlideType, CardItem, PresentationData, TableData, ImageData
+from .models import SlideData, SlideType, CardItem, PresentationData, TableData, ImageData, calculate_density_tier
 from .markdown_utils import strip_markdown
 
 
@@ -370,6 +370,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
         notes=notes,
         raw_markdown=raw_text
     )
+    slide.density_tier = calculate_density_tier(slide)
     return slide, next_counter
 
 

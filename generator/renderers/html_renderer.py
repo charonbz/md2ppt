@@ -151,18 +151,34 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       background: #000000;
       font-family: var(--body-font);
       color: var(--primary-text);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
       overflow: hidden;
       user-select: none;
     }}
 
+    #presentation-stage {{
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      background: #000000;
+      touch-action: pan-y pinch-zoom;
+    }}
+
     #presentation-viewport {{
       position: relative;
-      width: min(100vw, calc(100vh * 16 / 9));
-      height: min(100vh, calc(100vw * 9 / 16));
+      width: 1600px;
+      height: 900px;
+      min-width: 1600px;
+      min-height: 900px;
+      max-width: 1600px;
+      max-height: 900px;
+      transform-origin: center center;
       background-color: var(--bg-color);
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
       overflow: hidden;
@@ -172,14 +188,15 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       position: absolute;
       top: 0;
       left: 0;
-      width: 100%;
-      height: 100%;
+      width: 1600px;
+      height: 900px;
       display: none;
       flex-direction: column;
-      padding: 5% 6%;
+      padding: 60px 80px 90px 80px;
       background-color: var(--bg-color);
       opacity: 0;
       transition: opacity 0.25s ease-in-out;
+      box-sizing: border-box;
     }}
 
     .slide.active {{
@@ -203,37 +220,30 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       gap: 8px;
       background: var(--badge-bg);
       color: var(--badge-text);
-      padding: 6px 14px;
       border-radius: 9999px;
-      font-size: 0.95rem;
       font-weight: 600;
-      margin-bottom: 24px;
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }}
 
     .slide-main-title {{
       font-family: var(--title-font);
-      font-size: clamp(2.2rem, 4.5vw, 3.8rem);
       font-weight: 800;
-      line-height: 1.15;
       color: var(--primary-text);
-      margin-bottom: 24px;
     }}
 
     .slide-author {{
-      font-size: clamp(1.2rem, 2vw, 1.6rem);
       font-weight: 500;
       color: var(--secondary-text);
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }}
 
     .slide-author::before {{
       content: "";
       display: inline-block;
-      width: 32px;
+      width: 36px;
       height: 4px;
       background: var(--accent);
       border-radius: 2px;
@@ -244,7 +254,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 4%;
+      flex-shrink: 0;
     }}
 
     .header-left {{
@@ -254,7 +264,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .slide-category {{
-      font-size: 0.85rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -263,9 +272,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     .slide-heading {{
       font-family: var(--title-font);
-      font-size: clamp(1.8rem, 3vw, 2.5rem);
       font-weight: 700;
-      line-height: 1.2;
       color: var(--primary-text);
     }}
 
@@ -274,6 +281,26 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       display: flex;
       flex-direction: column;
       justify-content: center;
+      min-height: 0;
+    }}
+
+    /* Intro, Footnotes, Paragraphs */
+    .slide-intro {{
+      color: var(--secondary-text);
+      line-height: 1.5;
+    }}
+
+    .slide-footnote {{
+      color: var(--secondary-text);
+      font-style: italic;
+    }}
+
+    .text-center {{
+      text-align: center;
+    }}
+
+    .slide-para {{
+      color: var(--primary-text);
     }}
 
     /* Definition Card Layout */
@@ -283,15 +310,11 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       border-left: 8px solid var(--accent);
       border-radius: var(--card-radius);
       box-shadow: var(--card-shadow);
-      padding: clamp(24px, 4vw, 48px);
       position: relative;
     }}
 
     .definition-quote-icon {{
       position: absolute;
-      top: 20px;
-      right: 28px;
-      font-size: 3rem;
       line-height: 1;
       color: var(--accent-light);
       font-family: serif;
@@ -299,8 +322,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .definition-text {{
-      font-size: clamp(1.1rem, 1.8vw, 1.45rem);
-      line-height: 1.6;
       color: var(--primary-text);
       font-weight: 450;
     }}
@@ -309,8 +330,19 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .cards-grid {{
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: clamp(16px, 2.5vw, 32px);
       height: 100%;
+      align-items: stretch;
+    }}
+
+    .cards-grid:has(> .info-card:only-child) {{
+      grid-template-columns: 1fr;
+      max-width: 1050px;
+      margin: 0 auto;
+      width: 100%;
+    }}
+
+    .cards-grid:has(> .info-card:nth-child(3):last-child) > .info-card:last-child {{
+      grid-column: span 2;
     }}
 
     .info-card {{
@@ -318,7 +350,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       border: var(--border-width) solid var(--card-border);
       border-radius: var(--card-radius);
       box-shadow: var(--card-shadow);
-      padding: clamp(20px, 3vw, 36px);
       display: flex;
       flex-direction: column;
       transition: transform 0.2s ease, border-color 0.2s ease;
@@ -332,36 +363,29 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .card-top {{
       display: flex;
       align-items: flex-start;
-      gap: 14px;
-      margin-bottom: 14px;
+      gap: 16px;
+      margin-bottom: 12px;
     }}
 
     .card-index-badge {{
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 32px;
-      height: 32px;
       border-radius: 8px;
       background: var(--badge-bg);
       color: var(--badge-text);
-      font-size: 0.85rem;
       font-weight: 700;
       flex-shrink: 0;
-      margin-top: 3px;
     }}
 
     .card-title {{
       font-family: var(--title-font);
-      font-size: clamp(1.15rem, 1.7vw, 1.45rem);
       font-weight: 700;
       color: var(--primary-text);
       line-height: 1.25;
     }}
 
     .card-desc {{
-      font-size: clamp(0.95rem, 1.35vw, 1.15rem);
-      line-height: 1.55;
       color: var(--secondary-text);
       flex: 1;
     }}
@@ -419,7 +443,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .slide-table {{
       width: 100%;
       border-collapse: collapse;
-      font-size: clamp(0.95rem, 1.4vw, 1.15rem);
       background: var(--card-bg);
       border-radius: var(--card-radius);
       overflow: hidden;
@@ -431,14 +454,11 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       background: var(--accent);
       color: #FFFFFF;
       font-weight: 700;
-      padding: 14px 20px;
       text-transform: uppercase;
-      font-size: 0.85em;
       letter-spacing: 0.05em;
     }}
 
     .slide-table td {{
-      padding: 14px 20px;
       border-bottom: 1px solid var(--card-border);
       color: var(--primary-text);
       line-height: 1.5;
@@ -456,7 +476,25 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .slide-table th.align-center, .slide-table td.align-center {{ text-align: center; }}
     .slide-table th.align-right, .slide-table td.align-right {{ text-align: right; }}
 
-    /* Task Lists */
+    /* Task Lists & Standard Lists */
+    .content-list {{
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+    }}
+
+    .content-list li {{
+      position: relative;
+      color: var(--primary-text);
+    }}
+
+    .content-list li::before {{
+      content: "";
+      position: absolute;
+      border-radius: 50%;
+      background: var(--accent);
+    }}
+
     .task-list li::before {{
       display: none !important;
     }}
@@ -468,24 +506,16 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .task-item {{
       display: flex;
       align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 12px;
-      font-size: clamp(1.05rem, 1.6vw, 1.35rem);
       line-height: 1.5;
     }}
 
     .task-checkbox {{
-      width: 22px;
-      height: 22px;
-      border-radius: 6px;
       border: 2px solid var(--accent);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      margin-top: 2px;
       background: var(--card-bg);
-      font-size: 13px;
       font-weight: bold;
       color: transparent;
     }}
@@ -502,12 +532,12 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       align-items: center;
       justify-content: center;
       height: 100%;
-      gap: 14px;
+      gap: 16px;
     }}
 
     .slide-hero-image {{
       max-width: 100%;
-      max-height: 60vh;
+      max-height: 520px;
       object-fit: contain;
       border-radius: var(--card-radius);
       box-shadow: var(--card-shadow);
@@ -515,7 +545,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .image-caption {{
-      font-size: clamp(0.9rem, 1.3vw, 1.1rem);
       color: var(--secondary-text);
       font-style: italic;
       text-align: center;
@@ -524,8 +553,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     /* Split Layout: Content + Image */
     .split-layout {{
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: clamp(24px, 4vw, 48px);
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 48px;
       align-items: center;
       height: 100%;
     }}
@@ -545,39 +574,11 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     .split-image {{
       max-width: 100%;
-      max-height: 52vh;
+      max-height: 480px;
       object-fit: contain;
       border-radius: var(--card-radius);
       box-shadow: var(--card-shadow);
       border: var(--border-width) solid var(--card-border);
-    }}
-
-    /* Standard Lists */
-    .content-list {{
-      list-style-type: none;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      margin-top: 14px;
-    }}
-
-    .content-list li {{
-      position: relative;
-      padding-left: 28px;
-      font-size: clamp(1.05rem, 1.6vw, 1.35rem);
-      line-height: 1.5;
-      color: var(--primary-text);
-    }}
-
-    .content-list li::before {{
-      content: "";
-      position: absolute;
-      left: 6px;
-      top: 10px;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
     }}
 
     /* Fenced Code Block */
@@ -594,7 +595,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     .code-header {{
       background: rgba(255, 255, 255, 0.05);
-      padding: 8px 18px;
+      padding: 10px 22px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -602,7 +603,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .code-lang {{
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       text-transform: uppercase;
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -612,10 +613,9 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     .code-block pre {{
       background: transparent;
-      padding: 20px 24px;
+      padding: 24px 30px;
       color: #E6EDF3;
       font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-      font-size: clamp(0.95rem, 1.4vw, 1.2rem);
       line-height: 1.6;
       white-space: pre-wrap;
       overflow-x: auto;
@@ -630,7 +630,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       background: var(--card-bg);
       border: var(--border-width) solid var(--card-border);
       border-radius: 9999px;
-      padding: 6px 16px 6px 8px;
+      padding: 6px 18px 6px 10px;
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
       cursor: pointer;
       transition: all 0.2s ease;
@@ -643,8 +643,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .audio-play-btn {{
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: var(--audio-btn-bg);
       color: var(--audio-btn-text);
@@ -658,8 +658,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .audio-play-btn svg {{
-      width: 18px;
-      height: 18px;
+      width: 20px;
+      height: 20px;
       fill: currentColor;
     }}
 
@@ -670,13 +670,13 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .audio-label-title {{
-      font-size: 0.82rem;
+      font-size: 0.9rem;
       font-weight: 600;
       color: var(--primary-text);
     }}
 
     .audio-label-status {{
-      font-size: 0.72rem;
+      font-size: 0.78rem;
       color: var(--secondary-text);
     }}
 
@@ -684,7 +684,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       display: flex;
       align-items: center;
       gap: 3px;
-      height: 14px;
+      height: 16px;
       margin-left: 4px;
     }}
 
@@ -709,18 +709,19 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     /* Global Navigation Footer */
     #nav-footer {{
       position: absolute;
-      bottom: 24px;
-      left: 6%;
-      right: 6%;
+      bottom: 28px;
+      left: 80px;
+      right: 80px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       pointer-events: none;
+      z-index: 100;
     }}
 
     .nav-controls {{
       display: flex;
-      gap: 8px;
+      gap: 12px;
       pointer-events: auto;
     }}
 
@@ -728,9 +729,9 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       background: var(--card-bg);
       border: var(--border-width) solid var(--card-border);
       color: var(--primary-text);
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -754,13 +755,119 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       background: var(--card-bg);
       border: var(--border-width) solid var(--card-border);
       color: var(--secondary-text);
-      padding: 6px 14px;
+      padding: 8px 18px;
       border-radius: 20px;
-      font-size: 0.85rem;
+      font-size: 1rem;
       font-weight: 600;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
       pointer-events: auto;
     }}
+
+    /* ==========================================================
+       DENSITY TIERS: SPACIOUS, BALANCED, COMPACT
+       ========================================================== */
+
+    /* 1. Spacious Tier (Light content: bold, punchy, generous) */
+    .density-spacious .title-pill {{ font-size: 20px; padding: 10px 24px; margin-bottom: 32px; }}
+    .density-spacious .slide-main-title {{ font-size: 76px; line-height: 1.15; margin-bottom: 32px; }}
+    .density-spacious .slide-author {{ font-size: 32px; }}
+
+    .density-spacious .slide-header {{ margin-bottom: 40px; }}
+    .density-spacious .slide-category {{ font-size: 20px; }}
+    .density-spacious .slide-heading {{ font-size: 56px; line-height: 1.2; }}
+
+    .density-spacious .slide-intro {{ font-size: 28px; margin-bottom: 28px; }}
+    .density-spacious .slide-footnote {{ font-size: 22px; margin-top: 26px; }}
+    .density-spacious .slide-para {{ font-size: 34px; line-height: 1.6; margin-bottom: 26px; }}
+
+    .density-spacious .content-list {{ gap: 24px; margin-top: 24px; }}
+    .density-spacious .content-list li {{ font-size: 32px; line-height: 1.6; padding-left: 40px; }}
+    .density-spacious .content-list li::before {{ left: 8px; top: 18px; width: 14px; height: 14px; }}
+    .density-spacious .task-item {{ font-size: 32px; gap: 18px; margin-bottom: 20px; }}
+    .density-spacious .task-checkbox {{ width: 32px; height: 32px; font-size: 20px; border-radius: 8px; margin-top: 4px; }}
+
+    .density-spacious .definition-card {{ padding: 56px 68px; }}
+    .density-spacious .definition-quote-icon {{ font-size: 96px; top: 28px; right: 36px; }}
+    .density-spacious .definition-text {{ font-size: 40px; line-height: 1.6; }}
+
+    .density-spacious .cards-grid {{ gap: 36px; }}
+    .density-spacious .info-card {{ padding: 38px 46px; }}
+    .density-spacious .card-index-badge {{ width: 48px; height: 48px; font-size: 1.3rem; }}
+    .density-spacious .card-title {{ font-size: 36px; }}
+    .density-spacious .card-desc {{ font-size: 26px; line-height: 1.6; }}
+
+    .density-spacious .slide-table th {{ padding: 20px 28px; font-size: 22px; }}
+    .density-spacious .slide-table td {{ padding: 20px 28px; font-size: 24px; }}
+    .density-spacious .code-block pre {{ font-size: 24px; padding: 28px 36px; }}
+    .density-spacious .image-caption {{ font-size: 24px; }}
+
+    /* 2. Balanced Tier (Standard content) */
+    .density-balanced .title-pill {{ font-size: 18px; padding: 8px 20px; margin-bottom: 26px; }}
+    .density-balanced .slide-main-title {{ font-size: 64px; line-height: 1.18; margin-bottom: 26px; }}
+    .density-balanced .slide-author {{ font-size: 28px; }}
+
+    .density-balanced .slide-header {{ margin-bottom: 32px; }}
+    .density-balanced .slide-category {{ font-size: 18px; }}
+    .density-balanced .slide-heading {{ font-size: 48px; line-height: 1.22; }}
+
+    .density-balanced .slide-intro {{ font-size: 24px; margin-bottom: 22px; }}
+    .density-balanced .slide-footnote {{ font-size: 19px; margin-top: 20px; }}
+    .density-balanced .slide-para {{ font-size: 28px; line-height: 1.6; margin-bottom: 20px; }}
+
+    .density-balanced .content-list {{ gap: 18px; margin-top: 18px; }}
+    .density-balanced .content-list li {{ font-size: 28px; line-height: 1.55; padding-left: 34px; }}
+    .density-balanced .content-list li::before {{ left: 6px; top: 15px; width: 10px; height: 10px; }}
+    .density-balanced .task-item {{ font-size: 28px; gap: 16px; margin-bottom: 16px; }}
+    .density-balanced .task-checkbox {{ width: 26px; height: 26px; font-size: 16px; border-radius: 6px; margin-top: 3px; }}
+
+    .density-balanced .definition-card {{ padding: 44px 54px; }}
+    .density-balanced .definition-quote-icon {{ font-size: 76px; top: 22px; right: 30px; }}
+    .density-balanced .definition-text {{ font-size: 32px; line-height: 1.55; }}
+
+    .density-balanced .cards-grid {{ gap: 28px; }}
+    .density-balanced .info-card {{ padding: 28px 34px; }}
+    .density-balanced .card-index-badge {{ width: 40px; height: 40px; font-size: 1.1rem; }}
+    .density-balanced .card-title {{ font-size: 30px; }}
+    .density-balanced .card-desc {{ font-size: 22px; line-height: 1.55; }}
+
+    .density-balanced .slide-table th {{ padding: 16px 22px; font-size: 18px; }}
+    .density-balanced .slide-table td {{ padding: 16px 22px; font-size: 20px; }}
+    .density-balanced .code-block pre {{ font-size: 20px; padding: 22px 28px; }}
+    .density-balanced .image-caption {{ font-size: 20px; }}
+
+    /* 3. Compact Tier (Dense content: fits comfortably) */
+    .density-compact .title-pill {{ font-size: 16px; padding: 6px 16px; margin-bottom: 20px; }}
+    .density-compact .slide-main-title {{ font-size: 54px; line-height: 1.2; margin-bottom: 22px; }}
+    .density-compact .slide-author {{ font-size: 24px; }}
+
+    .density-compact .slide-header {{ margin-bottom: 24px; }}
+    .density-compact .slide-category {{ font-size: 16px; }}
+    .density-compact .slide-heading {{ font-size: 40px; line-height: 1.2; }}
+
+    .density-compact .slide-intro {{ font-size: 20px; margin-bottom: 16px; }}
+    .density-compact .slide-footnote {{ font-size: 16px; margin-top: 14px; }}
+    .density-compact .slide-para {{ font-size: 24px; line-height: 1.5; margin-bottom: 16px; }}
+
+    .density-compact .content-list {{ gap: 14px; margin-top: 14px; }}
+    .density-compact .content-list li {{ font-size: 24px; line-height: 1.5; padding-left: 28px; }}
+    .density-compact .content-list li::before {{ left: 5px; top: 12px; width: 8px; height: 8px; }}
+    .density-compact .task-item {{ font-size: 24px; gap: 12px; margin-bottom: 12px; }}
+    .density-compact .task-checkbox {{ width: 22px; height: 22px; font-size: 14px; border-radius: 5px; margin-top: 2px; }}
+
+    .density-compact .definition-card {{ padding: 32px 38px; }}
+    .density-compact .definition-quote-icon {{ font-size: 58px; top: 18px; right: 26px; }}
+    .density-compact .definition-text {{ font-size: 26px; line-height: 1.5; }}
+
+    .density-compact .cards-grid {{ gap: 20px; }}
+    .density-compact .info-card {{ padding: 20px 26px; }}
+    .density-compact .card-index-badge {{ width: 32px; height: 32px; font-size: 0.9rem; }}
+    .density-compact .card-title {{ font-size: 24px; }}
+    .density-compact .card-desc {{ font-size: 18px; line-height: 1.45; }}
+
+    .density-compact .slide-table th {{ padding: 13px 18px; font-size: 15px; }}
+    .density-compact .slide-table td {{ padding: 13px 18px; font-size: 16px; }}
+    .density-compact .code-block pre {{ font-size: 17px; padding: 18px 22px; }}
+    .density-compact .image-caption {{ font-size: 16px; }}
 
     /* ==========================================================
        ARCHETYPE SPECIFIC STYLES
@@ -821,8 +928,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .archetype-editorial .definition-text {{
       font-family: Georgia, 'Times New Roman', serif;
       font-style: italic;
-      font-size: clamp(1.2rem, 2vw, 1.6rem);
-      line-height: 1.8;
+      line-height: 1.7;
     }}
     .archetype-editorial .definition-quote-icon {{
       display: none;
@@ -1064,9 +1170,22 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
         min-height: auto !important;
         overflow: visible !important;
       }}
-      #presentation-viewport {{
+      #presentation-stage {{
+        display: block !important;
         width: 16in !important;
         height: auto !important;
+        overflow: visible !important;
+        background: transparent !important;
+      }}
+      #presentation-viewport {{
+        position: static !important;
+        width: 16in !important;
+        height: auto !important;
+        min-width: 0 !important;
+        min-height: 0 !important;
+        max-width: none !important;
+        max-height: none !important;
+        transform: none !important;
         box-shadow: none !important;
         overflow: visible !important;
       }}
@@ -1090,20 +1209,22 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
   </style>
 </head>
 <body>
-  <div id="presentation-viewport" class="archetype-{theme.archetype.value}">
-    {slides_joined}
+  <div id="presentation-stage">
+    <div id="presentation-viewport" class="archetype-{theme.archetype.value}">
+      {slides_joined}
 
-    <div id="nav-footer">
-      <div class="nav-controls">
-        <button id="btn-prev" class="nav-btn" type="button" title="Previous slide (Left arrow)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-        <button id="btn-next" class="nav-btn" type="button" title="Next slide (Right arrow / Space)">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-      </div>
-      <div class="slide-counter">
-        <span id="counter-current">1</span> / <span id="counter-total">{total_slides}</span>
+      <div id="nav-footer">
+        <div class="nav-controls">
+          <button id="btn-prev" class="nav-btn" type="button" title="Previous slide (Left arrow)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <button id="btn-next" class="nav-btn" type="button" title="Next slide (Right arrow / Space)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+        <div class="slide-counter">
+          <span id="counter-current">1</span> / <span id="counter-total">{total_slides}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -1258,8 +1379,47 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       }});
     }});
 
+    // Scale-to-fit virtual canvas (1600x900)
+    function updateViewportScale() {{
+      const viewport = document.getElementById('presentation-viewport');
+      if (!viewport) return;
+      const stageW = window.innerWidth;
+      const stageH = window.innerHeight;
+      const scale = Math.min(stageW / 1600, stageH / 900);
+      viewport.style.transform = `scale(${{scale}})`;
+    }}
+
+    window.addEventListener('resize', updateViewportScale);
+    window.addEventListener('orientationchange', updateViewportScale);
+
+    // Mobile touch swipe gestures
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener('touchstart', (e) => {{
+      if (e.touches.length === 1) {{
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }}
+    }}, {{ passive: true }});
+
+    document.addEventListener('touchend', (e) => {{
+      if (e.changedTouches.length === 1) {{
+        const diffX = e.changedTouches[0].clientX - touchStartX;
+        const diffY = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {{
+          if (diffX < 0) {{
+            showSlide(currentSlide + 1);
+          }} else {{
+            showSlide(currentSlide - 1);
+          }}
+        }}
+      }}
+    }}, {{ passive: true }});
+
     // Initial setup
     showSlide(0);
+    updateViewportScale();
   </script>
 </body>
 </html>"""
@@ -1336,13 +1496,14 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
         """
 
     cat_label = html.escape(deck_title.upper()) if deck_title else "PREZENTÁCIÓ"
+    density_cls = f"density-{slide.density_tier.value}"
 
     if slide.slide_type == SlideType.TITLE:
         main_title = render_markdown_html(slide.title)
         author_text = render_markdown_html(slide.author or slide.subtitle)
         pill_text = html.escape(deck_title) if deck_title else "PREZENTÁCIÓ"
         return f"""
-        <div class="slide" id="slide-{slide.index}">
+        <div class="slide {density_cls}" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-title-container">
             <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -1359,7 +1520,7 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
         def_content = render_markdown_html(slide.quote or (slide.paragraphs[0] if slide.paragraphs else ""))
         heading_title = render_markdown_html(slide.title)
         return f"""
-        <div class="slide" id="slide-{slide.index}">
+        <div class="slide {density_cls}" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
@@ -1381,10 +1542,10 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
         table_html = _render_table_html(slide.table) if slide.table else ""
         intro_html = ""
         if slide.paragraphs:
-            intro_html = f'<p class="slide-intro" style="margin-bottom: 18px; font-size: clamp(1.05rem, 1.5vw, 1.25rem); color: var(--secondary-text);">{render_markdown_html(slide.paragraphs[0])}</p>'
+            intro_html = f'<p class="slide-intro">{render_markdown_html(slide.paragraphs[0])}</p>'
         heading_title = render_markdown_html(slide.title)
         return f"""
-        <div class="slide" id="slide-{slide.index}">
+        <div class="slide {density_cls}" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
@@ -1417,10 +1578,10 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
         caption_html = f'<p class="image-caption">{alt_text}</p>' if alt_text else ""
         intro_html = ""
         if slide.paragraphs:
-            intro_html = f'<p style="margin-bottom: 14px; font-size: clamp(1.05rem, 1.5vw, 1.25rem); color: var(--secondary-text); text-align: center;">{render_markdown_html(slide.paragraphs[0])}</p>'
+            intro_html = f'<p class="slide-intro text-center">{render_markdown_html(slide.paragraphs[0])}</p>'
 
         return f"""
-        <div class="slide" id="slide-{slide.index}">
+        <div class="slide {density_cls}" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
@@ -1460,12 +1621,12 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
         intro_html = ""
         footer_html = ""
         if slide.paragraphs:
-            intro_html = f'<p class="slide-intro" style="margin-bottom: 20px; font-size: clamp(1.05rem, 1.5vw, 1.25rem); color: var(--secondary-text); line-height: 1.5;">{render_markdown_html(slide.paragraphs[0])}</p>'
+            intro_html = f'<p class="slide-intro">{render_markdown_html(slide.paragraphs[0])}</p>'
             if len(slide.paragraphs) > 1:
-                footer_html = f'<p class="slide-footnote" style="margin-top: 18px; font-size: clamp(0.95rem, 1.2vw, 1.05rem); color: var(--secondary-text); font-style: italic;">{render_markdown_html(slide.paragraphs[1])}</p>'
+                footer_html = f'<p class="slide-footnote">{render_markdown_html(slide.paragraphs[1])}</p>'
 
         return f"""
-        <div class="slide" id="slide-{slide.index}">
+        <div class="slide {density_cls}" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
@@ -1489,7 +1650,7 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
         code_text = (slide.code_snippet.get("code") if slide.code_snippet else "") or ""
         heading_title = render_markdown_html(slide.title)
         return f"""
-        <div class="slide" id="slide-{slide.index}">
+        <div class="slide {density_cls}" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
@@ -1511,7 +1672,7 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
 
     else:
         # Standard content slide (paragraphs + lists)
-        paras_html = "".join(f"<p style='margin-bottom:16px; font-size:clamp(1.1rem, 1.6vw, 1.35rem); line-height:1.6;'>{render_markdown_html(p)}</p>" for p in slide.paragraphs)
+        paras_html = "".join(f"<p class='slide-para'>{render_markdown_html(p)}</p>" for p in slide.paragraphs)
         lists_html = ""
         if slide.list_items:
             items_rendered = []
@@ -1563,7 +1724,7 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
             """
 
         return f"""
-        <div class="slide" id="slide-{slide.index}">
+        <div class="slide {density_cls}" id="slide-{slide.index}">
           {audio_tag_html}
           <div class="slide-header">
             <div class="header-left">
