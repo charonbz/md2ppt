@@ -2,7 +2,7 @@ import re
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict, Any
 from .models import SlideData, SlideType, CardItem, PresentationData, TableData, ImageData, calculate_density_tier
-from .markdown_utils import strip_markdown
+from .markdown_utils import INLINE_TOKEN_RE, strip_markdown
 
 
 AUDIO_COMMENT_RE = re.compile(r"<!--\s*audio:\s*([^\s>]+)\s*-->", re.IGNORECASE)
@@ -12,6 +12,31 @@ TITLE_COMMENT_RE = re.compile(r"<!--\s*title:\s*(.+?)\s*-->", re.IGNORECASE)
 AUTHOR_RE = re.compile(r"^(?:készítette|szerző|author|by)\s*:\s*(.+)$", re.IGNORECASE)
 IMAGE_RE = re.compile(r"!\[(?P<alt>[^\]]*)\]\((?P<src>[^)]+)\)")
 TABLE_SEP_RE = re.compile(r"^\s*\|?(?:\s*:?-+:?\s*\|)+\s*(?::?-+:?)?\s*\|?\s*$")
+# Trailing colon, optionally followed by closing emphasis markers ('Title:', '_Title:_', '**Title:**')
+TRAILING_COLON_RE = re.compile(r"\s*:\s*([*_]*)\s*$")
+# Leading emphasis span with the colon inside it ('**Key:** value', '_Key:_ value')
+LEADING_EMPHASIS_COLON_RE = re.compile(r"^(?P<m>\*\*|__|\*|_)(?P<title>(?:(?!(?P=m))[^:])+?)\s*:\s*(?P=m)\s*(?P<desc>.*)$")
+CODE_FENCE_RE = re.compile(r"(^[ \t]*```.*?^[ \t]*```[^\n]*$)", re.MULTILINE | re.DOTALL)
+HTML_COMMENT_RE = re.compile(r"<!--[\s\S]*?-->")
+# A comment occupying whole line(s), removed together with its line break
+FULL_LINE_COMMENT_RE = re.compile(r"^[ \t]*<!--(?:(?!-->)[\s\S])*-->[ \t]*(?:\n|\Z)", re.MULTILINE)
+
+
+def _strip_trailing_colon(text: str) -> str:
+    """Removes a trailing colon from a title, keeping any closing emphasis markers after it."""
+    return TRAILING_COLON_RE.sub(r"\1", text.strip()).strip()
+
+
+def _strip_html_comments(text: str) -> str:
+    """Removes HTML comments (incl. multi-line) outside fenced code blocks; comment-only lines are dropped entirely.
+
+    Renderers split card bodies per line, so a multi-line comment must not survive parsing.
+    """
+    segments = CODE_FENCE_RE.split(text)
+    for idx in range(0, len(segments), 2):  # even indices are outside code fences
+        segment = FULL_LINE_COMMENT_RE.sub("", segments[idx])
+        segments[idx] = HTML_COMMENT_RE.sub("", segment)
+    return "".join(segments)
 
 
 def parse_slides_file(slides_path: Path) -> PresentationData:
@@ -30,13 +55,13 @@ def parse_slides_file(slides_path: Path) -> PresentationData:
             idx, raw_slide, source_dir, global_card_counter, prev_title=prev_title
         )
         if slide.slide_type == SlideType.TITLE and slide.title:
-            pres_title = slide.title
+            pres_title = strip_markdown(slide.title)
         prev_title = slide.title
         slides.append(slide)
 
     # Ensure presentation title is well-formed
     if pres_title == "Presentation" and slides and slides[0].title:
-        pres_title = slides[0].title
+        pres_title = strip_markdown(slides[0].title)
 
     return PresentationData(
         title=pres_title,
@@ -146,6 +171,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
     cleaned_text = NOTES_COMMENT_RE.sub("", cleaned_text)
     cleaned_text = TYPE_COMMENT_RE.sub("", cleaned_text)
     cleaned_text = TITLE_COMMENT_RE.sub("", cleaned_text)
+    cleaned_text = _strip_html_comments(cleaned_text)
 
     lines = [l.rstrip() for l in cleaned_text.splitlines()]
 
@@ -180,7 +206,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
             continue
         m = re.match(r"^#{1,2}\s+(.*)", s)
         if m:
-            raw_title = m.group(1).strip().rstrip(":")
+            raw_title = _strip_trailing_colon(m.group(1))
             candidate = strip_markdown(raw_title)
             if candidate and candidate.lower() not in ["title", "slide"]:
                 header_title = raw_title
@@ -196,9 +222,9 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
             if not s:
                 continue
             if (s.startswith("**") and s.endswith("**")) or (s.startswith("__") and s.endswith("__")):
-                candidate = strip_markdown(s).rstrip(":")
+                candidate = _strip_trailing_colon(strip_markdown(s))
                 if candidate and len(candidate) < 70:
-                    header_title = s.rstrip(":")
+                    header_title = _strip_trailing_colon(s)
                     header_line_idx = i
                     break
             break
@@ -218,9 +244,9 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
                 and remaining_lines[first_non_blank_idx + 1].strip().startswith(": ")
             )
             if not has_definition_on_next and not first_s.startswith(("#", "- ", "* ", "• ", ">", "```", ": ", "|", "![")) and (index == 1 or len(first_s) < 55):
-                candidate = strip_markdown(first_s).rstrip(":")
+                candidate = _strip_trailing_colon(strip_markdown(first_s))
                 if candidate and not (index > 1 and re.search(r"[.!?]$", candidate) and len(candidate) > 40):
-                    header_title = first_s.rstrip(":")
+                    header_title = _strip_trailing_colon(first_s)
                     header_line_idx = first_non_blank_idx
 
     # Content lines with the title line removed
@@ -270,7 +296,13 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
     # If slide is not CARDS, re-integrate any raw_cards into list_items
     if slide_type != SlideType.CARDS and raw_cards:
         for c in raw_cards:
-            list_items.append(f"**{c.title}**: {c.description}" if c.description else c.title)
+            if not c.description:
+                list_items.append(c.title)
+            elif strip_markdown(c.title) == c.title:
+                list_items.append(f"**{c.title}**: {c.description}")
+            else:
+                # Title already carries inline markup; wrapping it again would corrupt it
+                list_items.append(f"{c.title}: {c.description}")
         raw_cards = []
 
     # 6. Title, subtitle, and author resolution
@@ -281,7 +313,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
     if slide_type == SlideType.TITLE:
         if not final_title:
             if paragraphs:
-                final_title = strip_markdown(paragraphs[0]).rstrip(":")
+                final_title = _strip_trailing_colon(strip_markdown(paragraphs[0]))
                 remaining = paragraphs[1:]
             else:
                 final_title = "Title Slide"
@@ -320,7 +352,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
                 elif raw_cards and len(raw_cards) <= 3:
                     final_title = ", ".join(c.title for c in raw_cards)
                 elif paragraphs:
-                    final_title = strip_markdown(paragraphs[0]).rstrip(":")
+                    final_title = _strip_trailing_colon(strip_markdown(paragraphs[0]))
                     paragraphs = paragraphs[1:]
                 else:
                     final_title = "Főbb témakörök"
@@ -513,7 +545,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
         if stripped.startswith("### ") or (stripped.startswith("## ") and not stripped.startswith("### ")):
             commit_para()
             # ponytail: keep inline markdown for card titles
-            card_title = stripped.lstrip("#").strip().rstrip(":").strip()
+            card_title = _strip_trailing_colon(stripped.lstrip("#"))
             i += 1
             body_lines = []
             while i < n and lines[i].strip() and not lines[i].strip().startswith(("### ", "## ", "# ", "---", ">", "```")) and not (strip_markdown(lines[i].strip()).endswith(":") and len(lines[i].strip()) < 40):
@@ -527,7 +559,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
         if i + 1 < n and lines[i + 1].strip().startswith(": "):
             commit_para()
             # ponytail: keep inline markdown for card titles
-            term = stripped.rstrip(":").strip()
+            term = _strip_trailing_colon(stripped)
             i += 1
             def_lines = []
             while i < n and lines[i].strip().startswith(": "):
@@ -563,7 +595,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
             if sub_lines:
                 # Multi-line bullet with sub-properties -> CardItem
                 # ponytail: keep inline markdown for card titles
-                card_title = bullet_first_line.rstrip(":").strip()
+                card_title = _strip_trailing_colon(bullet_first_line)
                 card_desc = "\n".join(sub_lines)
                 cards.append(CardItem(title=card_title, description=card_desc))
             else:
@@ -597,7 +629,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
                 if not next_s.startswith(("#", "---", "###", "![", "<img", "- ", "* ", "• ", "|")):
                     commit_para()
                     # ponytail: keep inline markdown for card titles
-                    term = stripped.rstrip(":").strip()
+                    term = _strip_trailing_colon(stripped)
                     i = next_idx
                     desc_lines = []
                     while i < n and lines[i].strip() and not lines[i].strip().endswith(":") and not strip_markdown(lines[i].strip()).endswith(":") and not lines[i].strip().startswith(("#", "---", "###", "- ", "* ", "• ", "![", "<img", "|")):
@@ -643,11 +675,29 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
     }
 
 
+def _find_colon_outside_markup(text: str) -> int:
+    """Returns the index of the first colon not inside an inline Markdown token (emphasis, code, link, URL), or -1."""
+    pos = 0
+    for match in INLINE_TOKEN_RE.finditer(text):
+        idx = text.find(":", pos, match.start())
+        if idx != -1:
+            return idx
+        pos = match.end()
+    return text.find(":", pos)
+
+
 def _try_parse_card_from_bullet(text: str) -> Optional[CardItem]:
     """Tries to extract a structured card (Title & Description) from a bullet item."""
-    colon_idx = text.find(":")
+    # ponytail: keep inline markdown for card titles
+    lead = LEADING_EMPHASIS_COLON_RE.match(text)
+    if lead:
+        title = f"{lead.group('m')}{lead.group('title').strip()}{lead.group('m')}"
+        desc = lead.group("desc").strip()
+        if desc and len(title) < 60:
+            return CardItem(title=title, description=desc)
+
+    colon_idx = _find_colon_outside_markup(text)
     if colon_idx != -1 and 2 < colon_idx < 60:
-        # ponytail: keep inline markdown for card titles
         title = text[:colon_idx].strip()
         desc = text[colon_idx + 1:].strip()
         if desc:
@@ -655,7 +705,6 @@ def _try_parse_card_from_bullet(text: str) -> Optional[CardItem]:
 
     dash_match = re.search(r"\s+–\s+|\s+-\s+", text)
     if dash_match and 2 < dash_match.start() < 60:
-        # ponytail: keep inline markdown for card titles
         title = text[:dash_match.start()].strip()
         desc = text[dash_match.end():].strip()
         if desc:

@@ -37,12 +37,7 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
 
     for item in runs_data:
         if getattr(item, "is_break", False):
-            try:
-                br = parse_xml(f'<a:br {nsdecls("a")}/>')
-                paragraph._p.append(br)
-            except Exception:
-                run = paragraph.add_run()
-                run.text = "\n"
+            paragraph.add_line_break()
             continue
 
         chunk_text = item.text
@@ -297,9 +292,9 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
     font_name = _get_font_name(theme)
     arch = theme.archetype
     badge_label = deck_title.upper() if deck_title else "PREZENTÁCIÓ"
-    tier = slide_data.density_tier
-    title_size = Pt(58) if tier == DensityTier.SPACIOUS else (Pt(50) if tier == DensityTier.BALANCED else Pt(42))
-    author_size = Pt(28) if tier == DensityTier.SPACIOUS else (Pt(24) if tier == DensityTier.BALANCED else Pt(20))
+    # Title slides are always classified SPACIOUS (models.calculate_density_tier).
+    title_size = Pt(58)
+    author_size = Pt(28)
 
     # 1. Category badge
     if arch == ArchetypeType.EDITORIAL:
@@ -371,13 +366,14 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
                                   card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
                                   deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "DEFINÍCIÓ"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme, density=slide_data.density_tier)
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
     first_para = slide_data.quote or (slide_data.paragraphs[0] if slide_data.paragraphs else "")
     tier = slide_data.density_tier
 
-    def_font_size = Pt(30) if tier == DensityTier.SPACIOUS else (Pt(24) if tier == DensityTier.BALANCED else Pt(19))
+    # Definition slides are never COMPACT (models.calculate_density_tier).
+    def_font_size = Pt(30) if tier == DensityTier.SPACIOUS else Pt(24)
     def_spacing = 1.45 if tier == DensityTier.SPACIOUS else 1.35
 
     if arch == ArchetypeType.EDITORIAL:
@@ -485,18 +481,23 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                              card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb,
                              deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "ÁTTEKINTÉS"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme, density=slide_data.density_tier)
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
 
     has_intro = bool(slide_data.paragraphs)
+    has_footnote = len(slide_data.paragraphs) > 1
     top = Inches(2.9) if has_intro else Inches(2.2)
     height = Inches(3.7) if has_intro else Inches(4.3)
+    footnote_h = Inches(0.55)
+    if has_footnote:
+        height -= footnote_h
     tier = slide_data.density_tier
 
     card_title_size = Pt(28) if tier == DensityTier.SPACIOUS else (Pt(23) if tier == DensityTier.BALANCED else Pt(19))
     card_desc_size = Pt(20) if tier == DensityTier.SPACIOUS else (Pt(17) if tier == DensityTier.BALANCED else Pt(14))
     intro_size = Pt(20) if tier == DensityTier.SPACIOUS else (Pt(17) if tier == DensityTier.BALANCED else Pt(14))
+    footnote_size = Pt(16) if tier == DensityTier.SPACIOUS else (Pt(14) if tier == DensityTier.BALANCED else Pt(12))
 
     if has_intro:
         intro_box = slide.shapes.add_textbox(Inches(1.0), Inches(2.1), Inches(11.333), Inches(0.65))
@@ -504,6 +505,16 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         itf.word_wrap = True
         ip = itf.paragraphs[0]
         _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, intro_size, secondary_rgb, accent_color=accent_rgb)
+
+    if has_footnote:
+        # Mirrors the HTML `.slide-footnote` (secondary color, italic) below the cards grid.
+        fn_box = slide.shapes.add_textbox(Inches(1.0), top + height + Inches(0.1), Inches(11.333), footnote_h - Inches(0.1))
+        ftf = fn_box.text_frame
+        ftf.word_wrap = True
+        fp = ftf.paragraphs[0]
+        _add_formatted_runs(fp, slide_data.paragraphs[1], font_name, footnote_size, secondary_rgb, accent_color=accent_rgb)
+        for run in fp.runs:
+            run.font.italic = True
 
     num_cards = max(1, min(4, len(slide_data.cards)))
     if num_cards == 1:
@@ -679,7 +690,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
 def _render_pptx_code_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                             primary_rgb, secondary_rgb, accent_rgb,
                             deck_title: str = ""):
-    _add_header(slide, "KÓDRÉSZLET", slide_data.title, accent_rgb, primary_rgb, theme, density=slide_data.density_tier)
+    _add_header(slide, "KÓDRÉSZLET", slide_data.title, accent_rgb, primary_rgb, theme)
     lang = (slide_data.code_snippet.get("language") if slide_data.code_snippet else "code") or "code"
     code_text = (slide_data.code_snippet.get("code") if slide_data.code_snippet else "") or ""
 
@@ -713,7 +724,7 @@ def _render_pptx_table_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                              card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
                              deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "TÁBLÁZAT"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme, density=slide_data.density_tier)
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
     tier = slide_data.density_tier
@@ -805,7 +816,7 @@ def _render_pptx_image_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                              accent_rgb, primary_rgb, secondary_rgb,
                              deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "ILLUSZTRÁCIÓ"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme, density=slide_data.density_tier)
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     tier = slide_data.density_tier
     intro_size = Pt(20) if tier == DensityTier.SPACIOUS else (Pt(17) if tier == DensityTier.BALANCED else Pt(14))
@@ -838,7 +849,7 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
                                 card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
                                 deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "ÁTTEKINTÉS"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme, density=slide_data.density_tier)
+    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     tier = slide_data.density_tier
 
@@ -893,7 +904,7 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
             _add_formatted_runs(cp, img_info.alt, font_name, Pt(11), secondary_rgb, accent_color=accent_rgb)
 
 
-def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme: ThemeConfig, density: DensityTier = DensityTier.BALANCED):
+def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme: ThemeConfig):
     font_name = _get_font_name(theme)
     arch = theme.archetype
 

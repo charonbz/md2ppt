@@ -107,84 +107,59 @@ def _prepare_audio_asset(src_path: Path, dist_dir: Path) -> Dict[str, str]:
 
 
 def _build_bullet_css(bullet_style: BulletStyle) -> str:
-    """Returns CSS rules for the configured bullet style (chevron, editorial, refined)."""
-    # ponytail: clean vertical centering on the first line's character midline
+    """Returns CSS rules for the configured bullet style (chevron, editorial, refined).
+
+    Markers are in-flow inline-blocks hung into the li's left padding (net zero advance),
+    so they share the first line's baseline at any font size and line-height:
+    glyph markers sit at their designed height on that baseline (enlarged via transform),
+    and the refined dot uses `vertical-align: middle` (baseline + half x-height).
+    """
+    marker_selector = ".card-bullets li::before,\n    .content-list li:not(.task-item)::before"
     if bullet_style == BulletStyle.EDITORIAL:
-        return """
+        return f"""
     /* Editorial Dash (–) */
-    .card-bullets li::before,
-    .content-list:not(.task-list) li::before {
+    {marker_selector} {{
       content: "–";
-      position: absolute;
-      left: 4px;
-      top: 0;
-      height: 1.5em;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-block;
+      width: 0.6em;
+      margin-left: calc(4px - var(--bullet-indent));
+      margin-right: calc(var(--bullet-indent) - 4px - 0.6em);
       color: var(--accent);
       font-weight: 700;
-      font-size: 1.05em;
-      line-height: 1;
-      transform: translateY(-0.02em);
-      border-radius: 0 !important;
-      background: transparent !important;
-      width: auto !important;
-    }
+      transform: scale(1.05);
+    }}
 """
     elif bullet_style == BulletStyle.REFINED:
-        return """
+        return f"""
     /* Refined Bullet Dot (•) */
-    .card-bullets li::before,
-    .content-list:not(.task-list) li::before {
+    {marker_selector} {{
       content: "";
-      position: absolute;
-      left: 6px;
-      top: 0;
-      border-radius: 50% !important;
-      background: var(--accent) !important;
-    }
-    .density-spacious .card-bullets li::before,
-    .density-spacious .content-list:not(.task-list) li::before {
-      width: 9px;
-      height: 9px;
-      margin-top: calc(1.55em / 2 - 4.5px);
-    }
-    .density-balanced .card-bullets li::before,
-    .density-balanced .content-list:not(.task-list) li::before {
-      width: 8px;
-      height: 8px;
-      margin-top: calc(1.5em / 2 - 4px);
-    }
-    .density-compact .card-bullets li::before,
-    .density-compact .content-list:not(.task-list) li::before {
-      width: 7px;
-      height: 7px;
-      margin-top: calc(1.45em / 2 - 3.5px);
-    }
+      display: inline-block;
+      width: var(--bullet-dot);
+      height: var(--bullet-dot);
+      margin-left: calc(6px - var(--bullet-indent));
+      margin-right: calc(var(--bullet-indent) - 6px - var(--bullet-dot));
+      vertical-align: middle;
+      border-radius: 50%;
+      background: var(--accent);
+    }}
+    .density-spacious {{ --bullet-dot: 9px; }}
+    .density-balanced {{ --bullet-dot: 8px; }}
+    .density-compact {{ --bullet-dot: 7px; }}
 """
     else:  # CHEVRON (default)
-        return """
+        return f"""
     /* Chevron (›) */
-    .card-bullets li::before,
-    .content-list:not(.task-list) li::before {
+    {marker_selector} {{
       content: "›";
-      position: absolute;
-      left: 4px;
-      top: 0;
-      height: 1.5em;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-block;
+      width: 0.5em;
+      margin-left: calc(4px - var(--bullet-indent));
+      margin-right: calc(var(--bullet-indent) - 4px - 0.5em);
       color: var(--accent);
       font-weight: 800;
-      font-size: 1.15em;
-      line-height: 1;
-      transform: translateY(-0.05em);
-      border-radius: 0 !important;
-      background: transparent !important;
-      width: auto !important;
-    }
+      transform: scale(1.15);
+    }}
 """
 
 
@@ -235,7 +210,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{pres.title}</title>
+  <title>{html.escape(pres.title)}</title>
   <style>
     :root {{
       --bg-color: {theme.colors['background']};
@@ -270,6 +245,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       padding: 0;
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       user-select: none;
     }}
@@ -277,6 +253,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     #presentation-stage {{
       width: 100vw;
       height: 100vh;
+      height: 100dvh;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -312,6 +289,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       opacity: 0;
       transition: opacity 0.25s ease-in-out;
       box-sizing: border-box;
+      overflow: hidden;
     }}
 
     .slide.active {{
@@ -584,6 +562,11 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       letter-spacing: 0.05em;
     }}
 
+    .slide-table th .md-arrow,
+    .slide-table th strong {{
+      color: inherit;
+    }}
+
     .slide-table td {{
       border-bottom: 1px solid var(--card-border);
       color: var(--primary-text);
@@ -610,15 +593,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .content-list li {{
-      position: relative;
       color: var(--primary-text);
-    }}
-
-    .content-list li::before {{
-      content: "";
-      position: absolute;
-      border-radius: 50%;
-      background: var(--accent);
+      padding-left: var(--bullet-indent);
     }}
 
     /* Card Bullets Base */
@@ -631,8 +607,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     }}
 
     .card-bullets li {{
-      position: relative;
       color: var(--secondary-text);
+      padding-left: var(--bullet-indent);
     }}
 
     .card-desc-p {{
@@ -644,12 +620,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
 {bullet_css}
 
-    .task-list li::before {{
-      display: none !important;
-    }}
-
-    .task-list li {{
-      padding-left: 0 !important;
+    .task-list .task-item {{
+      padding-left: 0;
     }}
 
     .task-item {{
@@ -922,15 +894,13 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-spacious .slide-author {{ font-size: 32px; }}
 
     .density-spacious .slide-header {{ margin-bottom: 36px; }}
-    .density-spacious .slide-category {{ font-size: 18px; }}
-    .density-spacious .slide-heading {{ font-size: 48px; line-height: 1.22; }}
 
     .density-spacious .slide-intro {{ font-size: 28px; margin-bottom: 28px; }}
     .density-spacious .slide-footnote {{ font-size: 22px; margin-top: 26px; }}
     .density-spacious .slide-para {{ font-size: 34px; line-height: 1.6; margin-bottom: 26px; }}
 
     .density-spacious .content-list {{ gap: 24px; margin-top: 24px; }}
-    .density-spacious .content-list li {{ font-size: 32px; line-height: 1.6; padding-left: 40px; }}
+    .density-spacious .content-list li {{ font-size: 32px; line-height: 1.6; --bullet-indent: 40px; }}
     .density-spacious .task-item {{ font-size: 32px; gap: 18px; margin-bottom: 20px; }}
     .density-spacious .task-checkbox {{ width: 32px; height: 32px; font-size: 20px; border-radius: 8px; margin-top: 4px; }}
 
@@ -944,7 +914,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-spacious .card-title {{ font-size: 36px; }}
     .density-spacious .card-desc {{ font-size: 26px; line-height: 1.6; }}
     .density-spacious .card-bullets {{ gap: 12px; }}
-    .density-spacious .card-bullets li {{ font-size: 26px; line-height: 1.5; padding-left: 30px; }}
+    .density-spacious .card-bullets li {{ font-size: 26px; line-height: 1.5; --bullet-indent: 30px; }}
 
     .density-spacious .slide-table th {{ padding: 20px 28px; font-size: 22px; }}
     .density-spacious .slide-table td {{ padding: 20px 28px; font-size: 24px; }}
@@ -957,15 +927,13 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-balanced .slide-author {{ font-size: 28px; }}
 
     .density-balanced .slide-header {{ margin-bottom: 32px; }}
-    .density-balanced .slide-category {{ font-size: 18px; }}
-    .density-balanced .slide-heading {{ font-size: 48px; line-height: 1.22; }}
 
     .density-balanced .slide-intro {{ font-size: 24px; margin-bottom: 22px; }}
     .density-balanced .slide-footnote {{ font-size: 19px; margin-top: 20px; }}
     .density-balanced .slide-para {{ font-size: 28px; line-height: 1.6; margin-bottom: 20px; }}
 
     .density-balanced .content-list {{ gap: 18px; margin-top: 18px; }}
-    .density-balanced .content-list li {{ font-size: 28px; line-height: 1.55; padding-left: 34px; }}
+    .density-balanced .content-list li {{ font-size: 28px; line-height: 1.55; --bullet-indent: 34px; }}
     .density-balanced .task-item {{ font-size: 28px; gap: 16px; margin-bottom: 16px; }}
     .density-balanced .task-checkbox {{ width: 26px; height: 26px; font-size: 16px; border-radius: 6px; margin-top: 3px; }}
 
@@ -979,7 +947,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-balanced .card-title {{ font-size: 30px; }}
     .density-balanced .card-desc {{ font-size: 22px; line-height: 1.55; }}
     .density-balanced .card-bullets {{ gap: 10px; }}
-    .density-balanced .card-bullets li {{ font-size: 22px; line-height: 1.45; padding-left: 26px; }}
+    .density-balanced .card-bullets li {{ font-size: 22px; line-height: 1.45; --bullet-indent: 26px; }}
 
     .density-balanced .slide-table th {{ padding: 16px 22px; font-size: 18px; }}
     .density-balanced .slide-table td {{ padding: 16px 22px; font-size: 20px; }}
@@ -992,15 +960,13 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-compact .slide-author {{ font-size: 24px; }}
 
     .density-compact .slide-header {{ margin-bottom: 28px; }}
-    .density-compact .slide-category {{ font-size: 18px; }}
-    .density-compact .slide-heading {{ font-size: 48px; line-height: 1.22; }}
 
     .density-compact .slide-intro {{ font-size: 20px; margin-bottom: 16px; }}
     .density-compact .slide-footnote {{ font-size: 16px; margin-top: 14px; }}
     .density-compact .slide-para {{ font-size: 24px; line-height: 1.5; margin-bottom: 16px; }}
 
     .density-compact .content-list {{ gap: 14px; margin-top: 14px; }}
-    .density-compact .content-list li {{ font-size: 24px; line-height: 1.5; padding-left: 28px; }}
+    .density-compact .content-list li {{ font-size: 24px; line-height: 1.5; --bullet-indent: 28px; }}
     .density-compact .task-item {{ font-size: 24px; gap: 12px; margin-bottom: 12px; }}
     .density-compact .task-checkbox {{ width: 22px; height: 22px; font-size: 14px; border-radius: 5px; margin-top: 2px; }}
 
@@ -1014,7 +980,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-compact .card-title {{ font-size: 24px; }}
     .density-compact .card-desc {{ font-size: 18px; line-height: 1.45; }}
     .density-compact .card-bullets {{ gap: 8px; }}
-    .density-compact .card-bullets li {{ font-size: 18px; line-height: 1.4; padding-left: 22px; }}
+    .density-compact .card-bullets li {{ font-size: 18px; line-height: 1.4; --bullet-indent: 22px; }}
 
     .density-compact .slide-table th {{ padding: 13px 18px; font-size: 15px; }}
     .density-compact .slide-table td {{ padding: 13px 18px; font-size: 16px; }}
@@ -1309,29 +1275,30 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       border-radius: 4px !important;
     }}
 
-    /* Print styles for pixel-perfect 16:9 PDF export */
+    /* Print styles: one 1600x900 CSS px page per slide, identical to the screen canvas */
     @media print {{
       @page {{
-        size: 16in 9in;
+        size: 1600px 900px;
         margin: 0;
       }}
       body {{
         background: transparent !important;
         display: block !important;
+        width: 1600px !important;
         height: auto !important;
         min-height: auto !important;
         overflow: visible !important;
       }}
       #presentation-stage {{
         display: block !important;
-        width: 16in !important;
+        width: 1600px !important;
         height: auto !important;
         overflow: visible !important;
         background: transparent !important;
       }}
       #presentation-viewport {{
         position: static !important;
-        width: 16in !important;
+        width: 1600px !important;
         height: auto !important;
         min-width: 0 !important;
         min-height: 0 !important;
@@ -1345,8 +1312,9 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
         position: relative !important;
         display: flex !important;
         opacity: 1 !important;
-        width: 16in !important;
-        height: 9in !important;
+        width: 1600px !important;
+        height: 900px !important;
+        overflow: hidden !important;
         page-break-after: always !important;
         break-after: page !important;
         box-sizing: border-box !important;
@@ -1544,27 +1512,30 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     window.addEventListener('resize', updateViewportScale);
     window.addEventListener('orientationchange', updateViewportScale);
 
-    // Mobile touch swipe gestures
+    // Mobile touch swipe gestures (ignored when a pinch / multi-touch occurred during the gesture)
     let touchStartX = 0;
     let touchStartY = 0;
+    let multiTouch = false;
 
     document.addEventListener('touchstart', (e) => {{
       if (e.touches.length === 1) {{
+        multiTouch = false;
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
+      }} else {{
+        multiTouch = true;
       }}
     }}, {{ passive: true }});
 
     document.addEventListener('touchend', (e) => {{
-      if (e.changedTouches.length === 1) {{
-        const diffX = e.changedTouches[0].clientX - touchStartX;
-        const diffY = e.changedTouches[0].clientY - touchStartY;
-        if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {{
-          if (diffX < 0) {{
-            showSlide(currentSlide + 1);
-          }} else {{
-            showSlide(currentSlide - 1);
-          }}
+      if (multiTouch || e.touches.length !== 0 || e.changedTouches.length !== 1) return;
+      const diffX = e.changedTouches[0].clientX - touchStartX;
+      const diffY = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {{
+        if (diffX < 0) {{
+          showSlide(currentSlide + 1);
+        }} else {{
+          showSlide(currentSlide - 1);
         }}
       }}
     }}, {{ passive: true }});

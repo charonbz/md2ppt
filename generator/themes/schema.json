@@ -57,8 +57,7 @@
         "card_radius_px": { "type": "integer" },
         "card_shadow": { "type": "string" },
         "title_align": { "type": "string", "enum": ["left", "center"] },
-        "border_width_px": { "type": "integer" },
-        "bullet_style": { "type": "string", "enum": ["chevron", "editorial", "refined"] }
+        "border_width_px": { "type": "integer" }
       }
     }
   }

@@ -87,10 +87,11 @@ slideshowGenerator/
   - **Fenced Code Safety**: Fenced code blocks (```` ```python ... ``` ````) track state so internal `#` code comments are never misidentified as slide boundaries.
 - **Title Extraction & Sanitization (`markdown_utils.strip_markdown`)**:
   - Automatically identifies titles from `# `, `## `, bold markers `**Title**`, or leading terms (excluding structural prefixes `#`, `- `, `* `, `• `, `>`, ` ``` `, `: `, `|`, `![` to protect card headings and content blocks).
-  - Sanitizes formatting markers so PowerPoint headers and HTML titles display clean plain text without raw asterisks or hashes.
+  - Slide headings and card titles keep inline Markdown (rendered as markup); `PresentationData.title` (deck title used for category labels, title pills, `<title>` and PPTX badges) is plain text via `strip_markdown`.
+  - Trailing colons are removed by `_strip_trailing_colon`, which also handles colons inside closing emphasis markers (`_Részei:_` -> `_Részei_`).
 - **In-Slide Markdown Structures**:
   - **Definition Lists**: Pandoc/PHP Markdown Extra format (`Term\n: Definition line`) parsed directly into visual `CardItem` blocks.
-  - **Structured Bullet Cards**: Multi-line bullets with indented sub-properties (`- Term:\n  **Prop**: Val`) or single-line colon items (`Term: Description`) converted to `CardItem` objects.
+  - **Structured Bullet Cards**: Multi-line bullets with indented sub-properties (`- Term:\n  **Prop**: Val`) or single-line colon items (`Term: Description`) converted to `CardItem` objects. A colon inside a leading emphasis marker (`- **Term:** desc`) is handled; otherwise the split happens at the first colon outside inline tokens (code spans, links, raw URLs). When cards are demoted back into list items on non-card slides, the title is wrapped in `**` only if it has no markup of its own.
   - **Visual Cards (`### ` or `## `)**: Sub-headings within content lines create structured card blocks.
   - **Blockquotes (`> `)**: Rendered as prominent definition / quote cards.
   - **Fenced Code Blocks**: Highlighted monospace dark code container in PPTX and HTML.
@@ -102,6 +103,8 @@ slideshowGenerator/
   - `<!-- audio: filename.m4a -->`: Associates an audio track with the slide.
   - `<!-- notes: ... -->`: Speaker notes.
   - `<!-- type: ... -->`: Manual layout type override (`title`, `cards`, `definition`, `code`, `standard`).
+  - All other HTML comments (including multi-line ones) outside fenced code are removed before content parsing.
+- **Link Text**: Link text is parsed recursively for inline markup in both renderers; HTML renders link text without link tokens so anchors never nest.
 - **Title-Scoped Card Numbering**: Card numbering continues (`01, 02` -> `03, 04`) strictly when a slide continues the previous slide's title (e.g., matching title or `(folytatás)` / `(part 2)` suffix). When a slide introduces a new title, card numbering restarts from `01`.
 - **Card Titles Inline Markdown Preservation**: Card titles retain inline Markdown (e.g., `*italic*`, `**bold**`). Titles are rendered via `render_markdown_html()` into `<em>` and `<strong>` tags in HTML/PDF and via `parse_markdown_runs()` into styled PowerPoint runs (`run.font.italic = True`, `run.font.bold = True`).
 
@@ -120,7 +123,7 @@ slideshowGenerator/
 | `- [x] Done`<br/>`- [ ] Pending` | Task list token | **Task List** | Custom styled checkboxes (HTML) and checkmark bullets `☑` / `☐` (PPTX). |
 | `> Quote or definition` | `slide.quote` | **Definition Slide** | Large decorative quotation card (`“`) with accent left border. |
 | ```` ```python ````<br/>`def code():...`<br/>```` ``` ```` | `slide.code_snippet` | **Code Block Slide** | Dark IDE container with monospace code font and language badge. |
-| `- Item`<br/>`* Item`<br/>`1. Item` | `slide.list_items` | **Styled Content List** | Clean bullet list with colored circular bullet points. |
+| `- Item`<br/>`* Item`<br/>`1. Item` | `slide.list_items` | **Styled Content List** | Clean bullet list with theme bullet markers (chevron / en-dash / dot). |
 | Leading / trailing paragraphs | `slide.paragraphs` | **Intro / Footnote Text** | Lead subtitle above cards or italicized note below cards. |
 | `Készítette: Név`<br/>`Author: Name` | `slide.author` | **Author Line** | Presenter credit with left decorative accent bar. |
 | `**bold**` or `__bold__` | Bold token | **Bold Text** | `<strong>` in HTML; native `run.font.bold` in PowerPoint. |
@@ -171,10 +174,13 @@ Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for 
   - `editorial`: Literary typography en-dash (`–`) in accent color.
   - `refined`: Centered geometric round dot (`•`) in accent color.
   - Card bullet lines (Markdown lines starting with `- `, `* `, `• `) are automatically structured into `.card-bullets` lists with density tier scaling, rendered natively in HTML/PDF and with colored runs in PowerPoint.
-  - **Optical Midline Centering**: Bullets are vertically centered along the character line of the first text row using flex alignment (`display: inline-flex; align-items: center; justify-content: center; height: 1.5em; top: 0;`) with optical transforms (`translateY(-0.02em)` / `-0.05em`), eliminating rigid pixel offsets that caused sagging.
+  - **Midline Alignment**: Markers are inline-block `::before` elements hung into the li's padding (`--bullet-indent` per density tier). Chevron and en-dash keep the li's font-size and line-height (enlarged with `transform: scale(...)`), so they share the first line's baseline; the refined dot uses `vertical-align: middle` (x-height midline). No per-tier pixel offsets.
+  - In mixed task lists, plain items keep their bullet marker (`li:not(.task-item)`), matching PPTX.
+  - Arrows and bold text inside accent-colored table headers inherit the header text color.
   - **Arrow Optical Midline Lift**: `.md-arrow` (`→`) uses `vertical-align: 0.12em;` to lift the arrow shaft directly into the optical midline of adjacent lowercase and uppercase characters.
 
-- **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON with `"archetype": "cards"`.
+- **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON with `"archetype": "cards"`. The prompt includes the top-level `bullet_style`; invalid `archetype` / `bullet_style` values fall back to `cards` / `chevron`.
+- **Single `bullet_style` location**: Themes set `bullet_style` at the top level only (`schema.json`); the CLI `--bullet-style` overrides it.
 
 ### 4.3. Adaptive Density Tiers (`generator/models.py`, `generator/parser.py`)
 To prevent sparse slides from having tiny fonts while ensuring content-heavy slides never overflow the 16:9 canvas, the parser automatically assigns every slide a discrete density tier:
@@ -182,7 +188,7 @@ To prevent sparse slides from having tiny fonts while ensuring content-heavy sli
 - **`DensityTier.BALANCED`**: For standard content (3–4 cards, 4–5 bullets). Provides confident, high-impact presentation typography (main cover titles 64px / Pt(50), body/bullets 28px / Pt(22), definitions 32px / Pt(24)).
 - **`DensityTier.COMPACT`**: For dense slides (5+ cards, 6+ list items, tables, code). Maintains strict presentation readability thresholds (body/bullets 24px / Pt(18)) rather than shrinking into illegible document text.
 - **Constant Slide Heading Typography**: To prevent visual jumping when navigating across slides of varying density, content slide headings (`.slide-heading`) are fixed at a constant **48 px** (PowerPoint: **32 pt**) across all density tiers.
-- **Line-Count Aware Card Density**: The `CARDS` density classifier evaluates both total character volume and vertical line distribution (`max_desc_lines <= 6`), ensuring 4-card grids with 3–4 lines of prose remain in the comfortable `BALANCED` tier rather than downscaling prematurely.
+- **Wrapped-Line Aware Card Density**: The `CARDS` classifier estimates each card's wrapped line count (title + description, chars-per-line by card count, derived from PPTX card widths). `BALANCED` requires ≤ 4 cards, < 750 characters **and** ≤ 10 estimated lines per card; otherwise `COMPACT`.
 
 ### 4.4. HTML Renderer (`generator/renderers/html_renderer.py`)
 - **Zero-Dependency Standalone HTML**: Audio tracks are embedded directly into the HTML as Base64 data streams (`data:audio/mpeg;base64,...`). This bypasses browser `file:///` sandbox restrictions and makes the HTML completely portable.
@@ -191,19 +197,21 @@ To prevent sparse slides from having tiny fonts while ensuring content-heavy sli
 - **Virtual 16:9 Scale-to-Fit Canvas (`1600 × 900 px`)**:
   - The viewport is designed as a fixed virtual canvas of `1600 × 900 px` centered inside `#presentation-stage`.
   - On resize or orientation changes, JavaScript dynamically calculates `scale = Math.min(window.innerWidth / 1600, window.innerHeight / 900)` and applies `transform: scale(scale)` to `#presentation-viewport`.
-  - **Zero Mobile Clipping**: Completely prevents mobile devices (smartphones in portrait or landscape) from clipping bottom elements or overflowing viewport bounds.
-- **Mobile Touch Swipe Gestures**: Supports native touch navigation (`touchstart` / `touchend`) allowing users on mobile phones or tablets to swipe left/right to change slides seamlessly.
+  - The stage uses `100dvh` (with a `100vh` fallback) so collapsible mobile toolbars don't cover the nav footer.
+  - `.slide` uses `overflow: hidden`; content that exceeds the canvas is clipped rather than spilling under the nav controls or onto extra PDF pages.
+- **Mobile Touch Swipe Gestures**: Supports native touch navigation (`touchstart` / `touchend`) allowing users on mobile phones or tablets to swipe left/right to change slides. Multi-touch gestures (pinch-zoom) never change slides.
 - **Interactive Controls**: Keyboard navigation (arrow keys, spacebar, PgUp/PgDown, `F` for fullscreen), live time tracking (`Playing (0:02 / 0:07)`), and animated wave bars.
 
 ### 4.5. PowerPoint Renderer (`generator/renderers/pptx_renderer.py`)
 - Uses `python-pptx` to build 16:9 widescreen slides (`13.333 × 7.5` inches).
 - Synchronized with `slide.density_tier`: dynamically scales title `Pt(...)`, body text, card labels, and paragraph spacing across spacious, balanced, and compact tiers.
-- Renders cards and content blocks as native vector rounded shapes colored according to the selected theme.
+- Renders cards and content blocks as native vector rounded shapes colored according to the selected theme. A trailing paragraph on a cards slide renders as an italic footnote below the grid (parity with HTML `.slide-footnote`).
+- Line breaks use `paragraph.add_line_break()` (`<a:br/>`).
 - Embeds audio directly into the `.pptx` ZIP package (`ppt/media/media1.m4a`) as a native media shape (`<p14:media>` and `<a:hlinkClick action="ppaction://media">`), triggering playback on click.
 
 ### 4.6. PDF Renderer (`generator/renderers/pdf_renderer.py`)
-- Leverages the print stylesheet in the HTML (`@media print { @page { size: 16in 9in; margin: 0; } }`).
-- Resets stage and viewport transforms (`transform: none !important; width: 16in !important; height: auto !important;`) to ensure exact 16in × 9in vector page breaks.
+- Leverages the print stylesheet in the HTML (`@media print { @page { size: 1600px 900px; margin: 0; } }`).
+- Resets stage and viewport transforms (`transform: none`) and sizes every slide to the same `1600 × 900 px` canvas as the web player, so text wraps identically in HTML and PDF (pages are 1200 × 675 pt).
 - Executes Headless Google Chrome:
   ```bash
   google-chrome-stable --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf=dist/presentation.pdf dist/index.html
@@ -213,10 +221,10 @@ To prevent sparse slides from having tiny fonts while ensuring content-heavy sli
 ### 4.7. Reusable TCP Web Server & Source Watcher (`generator/cli.py`)
 - **Instant Port Reuse**: Implements `ReusableTCPServer` with `SO_REUSEADDR` and `SO_REUSEPORT`, ensuring that on `Ctrl + C`, the socket descriptor is immediately closed without lingering in Linux `TIME_WAIT`.
 - **Zero-Dependency Background Watcher (`watch_and_rebuild`)**:
-  - Automatically runs when `--serve` is active (or standalone via `--watch`). Can be disabled via `--no-watch`.
+  - Automatically runs when `--serve` is active (or standalone via `--watch`). `--no-watch` disables it and takes precedence over both.
   - Built strictly using Python's standard library (`threading`, `pathlib.Path.stat`, `time`, `os.walk`) without requiring external packages like `watchdog`.
   - Tracks filesystem modification times (`st_mtime`) for `slides.md`, audio files, images, and the applied theme JSON (while strictly ignoring generated files in `dist/`).
   - **Debounced Rebuilds**: Features a 300ms debounce buffer to handle multi-file editor flushes or rapid successive saves smoothly.
   - Automatically re-executes the build pipeline with the exact flags originally provided (`--theme`, `--archetype`, `--format`).
-  - Catches build exceptions gracefully so partial/invalid editor saves do not crash the running development server.
+  - Catches build exceptions gracefully so partial/invalid editor saves do not crash the running development server; a failed rebuild is reported as `❌ Rebuild failed` on stderr.
   - Allows instant previewing on browser refresh (`F5`) without restarting the server.

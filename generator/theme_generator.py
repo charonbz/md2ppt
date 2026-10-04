@@ -5,6 +5,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 from typing import Dict, Any, Optional
+from .models import ArchetypeType, BulletStyle
 
 THEMES_DIR = Path(__file__).parent / "themes"
 
@@ -16,6 +17,7 @@ Output ONLY a raw JSON object conforming to this schema without any markdown blo
   "name": "Human Readable Name",
   "description": "Short description of the theme aesthetic",
   "archetype": "cards",
+  "bullet_style": "chevron",
   "colors": {
     "background": "#HEX",
     "card_bg": "#HEX",
@@ -40,6 +42,8 @@ Output ONLY a raw JSON object conforming to this schema without any markdown blo
     "border_width_px": 1
   }
 }
+Allowed "archetype" values: editorial, cards, neubrutalism, terminal, minimal, corporate.
+Allowed "bullet_style" values (top-level key only): chevron (›), editorial (–), refined (•).
 """
 
 def generate_ai_theme(description: str, output_id: Optional[str] = None) -> Path:
@@ -55,7 +59,12 @@ def generate_ai_theme(description: str, output_id: Optional[str] = None) -> Path
 
     theme_id = output_id or theme_data.get("id") or _slugify(description[:20])
     theme_data["id"] = theme_id
-    theme_data.setdefault("archetype", "cards")
+    # Normalize enum fields so the theme always loads; bullet_style lives only at top level.
+    theme_data.get("styles", {}).pop("bullet_style", None)
+    if theme_data.get("archetype") not in {a.value for a in ArchetypeType}:
+        theme_data["archetype"] = ArchetypeType.CARDS.value
+    if theme_data.get("bullet_style") not in {b.value for b in BulletStyle}:
+        theme_data["bullet_style"] = BulletStyle.CHEVRON.value
 
     THEMES_DIR.mkdir(parents=True, exist_ok=True)
     out_file = THEMES_DIR / f"{theme_id}.json"

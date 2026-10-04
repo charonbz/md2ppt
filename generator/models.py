@@ -3,6 +3,8 @@ from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
+from .markdown_utils import strip_markdown
+
 
 class SlideType(str, Enum):
     TITLE = "title"
@@ -80,6 +82,32 @@ class SlideData:
     raw_markdown: str = ""
 
 
+# Approximate characters per wrapped description line for a card, by cards per row (BALANCED font size).
+_CARD_CHARS_PER_LINE = {1: 70, 2: 34, 3: 22, 4: 16}
+# Card titles use a larger font, so fewer characters fit per line.
+_CARD_TITLE_CHAR_RATIO = 0.75
+# Max estimated lines (title + description) that fit in one BALANCED card.
+_CARD_LINE_BUDGET = 10
+
+
+def _estimate_wrapped_lines(text: str, chars_per_line: int) -> int:
+    """Estimates rendered line count: each source line wraps at ~chars_per_line (bullet lines lose their marker width)."""
+    total = 0
+    for line in text.splitlines() or [""]:
+        content = line.strip()
+        if content.startswith(("- ", "* ", "• ")):
+            content = content[2:]
+        total += max(1, -(-len(strip_markdown(content)) // chars_per_line))
+    return total
+
+
+def _estimate_card_lines(card: CardItem, num_cards: int) -> int:
+    chars_per_line = _CARD_CHARS_PER_LINE.get(num_cards, _CARD_CHARS_PER_LINE[4])
+    title_lines = _estimate_wrapped_lines(card.title, max(1, int(chars_per_line * _CARD_TITLE_CHAR_RATIO)))
+    desc_lines = _estimate_wrapped_lines(card.description, chars_per_line) if card.description else 0
+    return title_lines + desc_lines
+
+
 def calculate_density_tier(slide: SlideData) -> DensityTier:
     """Classifies a slide into spacious (light content), balanced (standard), or compact (dense content)."""
     if slide.slide_type == SlideType.TITLE:
@@ -92,10 +120,10 @@ def calculate_density_tier(slide: SlideData) -> DensityTier:
     if slide.slide_type == SlideType.CARDS:
         num_cards = len(slide.cards)
         total_card_text = sum(len(c.title) + len(c.description) for c in slide.cards)
-        max_desc_lines = max((c.description.count("\n") + 1 for c in slide.cards), default=1)
+        max_card_lines = max((_estimate_card_lines(c, num_cards) for c in slide.cards), default=1)
         if num_cards <= 2 and total_card_text < 320:
             return DensityTier.SPACIOUS
-        elif num_cards <= 4 and (total_card_text < 750 or max_desc_lines <= 6):
+        elif num_cards <= 4 and total_card_text < 750 and max_card_lines <= _CARD_LINE_BUDGET:
             return DensityTier.BALANCED
         else:
             return DensityTier.COMPACT

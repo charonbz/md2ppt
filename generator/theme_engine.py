@@ -104,12 +104,7 @@ def load_theme(
         )
 
     # Determine bullet style (chevron, editorial, refined)
-    selected_bullet_str = (
-        bullet_style_override
-        or data.get("bullet_style")
-        or data.get("styles", {}).get("bullet_style")
-        or "chevron"
-    )
+    selected_bullet_str = bullet_style_override or data.get("bullet_style") or "chevron"
     try:
         bullet_style_enum = BulletStyle(selected_bullet_str.lower().strip())
     except ValueError:

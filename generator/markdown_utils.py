@@ -26,7 +26,7 @@ class TextRun:
 
 # Inline Markdown token regex with full extended syntax
 INLINE_TOKEN_RE = re.compile(
-    r"(?P<comment><!--.*?-->)|"
+    r"(?P<comment><!--[\s\S]*?-->)|"
     r"(?P<link>\[(?P<link_text>[^\]]+)\]\((?P<link_url>[^)]+)\))|"
     r"(?P<raw_url>https?://[^\s<>'\"`]+)|"
     r"(?P<code_tick>`(?P<code_text>[^`]+)`)|"
@@ -72,13 +72,19 @@ def strip_markdown(text: str) -> str:
     return cleaned
 
 
-def render_markdown_html(text: str) -> str:
-    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs, <br>, -> arrows) to safe HTML."""
+def render_markdown_html(text: str, allow_links: bool = True) -> str:
+    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs, <br>, -> arrows) to safe HTML.
+
+    allow_links=False renders link and URL tokens as plain text (used for link text, so anchors never nest).
+    """
     if not text:
         return ""
 
     pos = 0
     parts = []
+
+    def _inner(content: str) -> str:
+        return render_markdown_html(content, allow_links)
 
     for match in INLINE_TOKEN_RE.finditer(text):
         start, end = match.span()
@@ -96,36 +102,31 @@ def render_markdown_html(text: str) -> str:
             content = html.escape(match.group("code_text"))
             parts.append(f"<code>{content}</code>")
         elif match.group("link"):
-            link_text = render_markdown_html(match.group("link_text"))
-            link_url = html.escape(match.group("link_url"))
-            parts.append(f'<a href="{link_url}" target="_blank" rel="noopener">{link_text}</a>')
+            link_text = render_markdown_html(match.group("link_text"), allow_links=False)
+            if allow_links:
+                link_url = html.escape(match.group("link_url"))
+                parts.append(f'<a href="{link_url}" target="_blank" rel="noopener">{link_text}</a>')
+            else:
+                parts.append(link_text)
         elif match.group("raw_url"):
             url = html.escape(match.group("raw_url"))
-            parts.append(f'<a href="{url}" target="_blank" rel="noopener">{url}</a>')
+            parts.append(f'<a href="{url}" target="_blank" rel="noopener">{url}</a>' if allow_links else url)
         elif match.group("strike"):
-            content = render_markdown_html(match.group("strike_text"))
-            parts.append(f'<del class="md-strike">{content}</del>')
+            parts.append(f'<del class="md-strike">{_inner(match.group("strike_text"))}</del>')
         elif match.group("highlight"):
-            content = render_markdown_html(match.group("highlight_text"))
-            parts.append(f'<mark class="md-highlight">{content}</mark>')
+            parts.append(f'<mark class="md-highlight">{_inner(match.group("highlight_text"))}</mark>')
         elif match.group("sup_caret"):
-            content = render_markdown_html(match.group("sup_text"))
-            parts.append(f'<sup>{content}</sup>')
+            parts.append(f'<sup>{_inner(match.group("sup_text"))}</sup>')
         elif match.group("sub_tilde"):
-            content = render_markdown_html(match.group("sub_text"))
-            parts.append(f'<sub>{content}</sub>')
+            parts.append(f'<sub>{_inner(match.group("sub_text"))}</sub>')
         elif match.group("bold_star"):
-            content = render_markdown_html(match.group("bold_star_text"))
-            parts.append(f"<strong>{content}</strong>")
+            parts.append(f"<strong>{_inner(match.group('bold_star_text'))}</strong>")
         elif match.group("bold_under"):
-            content = render_markdown_html(match.group("bold_under_text"))
-            parts.append(f"<strong>{content}</strong>")
+            parts.append(f"<strong>{_inner(match.group('bold_under_text'))}</strong>")
         elif match.group("italic_star"):
-            content = render_markdown_html(match.group("italic_star_text"))
-            parts.append(f"<em>{content}</em>")
+            parts.append(f"<em>{_inner(match.group('italic_star_text'))}</em>")
         elif match.group("italic_under"):
-            content = render_markdown_html(match.group("italic_under_text"))
-            parts.append(f"<em>{content}</em>")
+            parts.append(f"<em>{_inner(match.group('italic_under_text'))}</em>")
 
         pos = end
 
@@ -170,9 +171,14 @@ def parse_markdown_runs(text: str) -> List[TextRun]:
         elif match.group("code_tick"):
             _append_text_with_newlines(match.group("code_text"), is_code=True)
         elif match.group("link"):
-            link_text = match.group("link_text")
             link_url = match.group("link_url")
-            _append_text_with_newlines(f"{link_text} ({link_url})", is_link=True, is_italic=True, link_url=link_url)
+            for r in parse_markdown_runs(match.group("link_text")):
+                if not r.is_break:
+                    r.is_link = True
+                    r.is_italic = True
+                    r.link_url = link_url
+                runs.append(r)
+            runs.append(TextRun(text=f" ({link_url})", is_link=True, is_italic=True, link_url=link_url))
         elif match.group("raw_url"):
             url = match.group("raw_url")
             _append_text_with_newlines(url, is_link=True, is_italic=True, link_url=url)

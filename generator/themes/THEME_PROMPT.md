@@ -14,6 +14,8 @@ Your response must contain ONLY a single valid JSON code block conforming to thi
   "id": "unique_theme_id_snake_case",
   "name": "Human-Readable Name",
   "description": "Short description of the theme aesthetic",
+  "archetype": "one of: editorial, cards, neubrutalism, terminal, minimal, corporate",
+  "bullet_style": "one of: chevron (›), editorial (–), refined (•)",
   "colors": {
     "background": "#HEX background color",
     "card_bg": "#HEX card background",

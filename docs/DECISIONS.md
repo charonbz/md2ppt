@@ -70,6 +70,8 @@ Adding or tweaking themes requires zero Python code changes—simply creating or
 
 ## ADR-005: Continuous Card Numbering Across Sequential Category Slides
 
+**Status:** Superseded by ADR-016 (numbering continues only when the slide title matches the previous slide).
+
 ### Context
 A 4-part category breakdown in `slides.md` spans two consecutive slides (2 items per slide). Previously, both slides restarted numbering from `01, 02`.
 
@@ -204,22 +206,22 @@ User feedback highlighted two critical usability and presentation quality issues
 
 ### Decision
 1. **Virtual Coordinate Canvas (`1600 × 900 px`) & CSS Scale-to-Fit**:
-   - The HTML slideshow uses a stage container (`#presentation-stage`, `100vw × 100vh`) with flex centering.
+   - The HTML slideshow uses a stage container (`#presentation-stage`, `100vw × 100dvh`, with a `100vh` fallback) with flex centering. Using the dynamic viewport height keeps the nav footer above collapsible mobile browser toolbars.
    - The presentation viewport (`#presentation-viewport`) is defined as a fixed coordinate space of `1600 × 900 px`.
    - On window resize or device orientation changes, JavaScript computes:
      $$\text{scale} = \min\left(\frac{W_{\text{window}}}{1600}, \frac{H_{\text{window}}}{900}\right)$$
      and applies `transform: scale(scale)` with `transform-origin: center center`.
-   - **Guarantees zero clipping**: On any device (mobile portrait, mobile landscape, ultrawide desktop), the entire 16:9 slide is 100% visible and unclipped.
-   - Preserves `@media print` unscaled vector export (`transform: none !important; width: 16in !important; height: auto !important;`) for 16in × 9in PDF generation.
+   - On any device (mobile portrait, mobile landscape, ultrawide desktop), the entire 16:9 slide is visible. `.slide` uses `overflow: hidden`, so content that exceeds the canvas is clipped rather than spilling under the nav controls or onto extra PDF pages; density tiers are responsible for making content fit.
+   - `@media print` renders the same unscaled `1600 × 900 px` canvas (`@page { size: 1600px 900px; margin: 0 }`, `transform: none`), so PDF text wraps exactly like the web player.
 
 2. **Mobile Touch Swipe Navigation**:
-   - Added `touchstart` and `touchend` swipe gesture listeners in `html_renderer.py` allowing mobile viewers to swipe left to advance or right to go back.
+   - Added `touchstart` and `touchend` swipe gesture listeners in `html_renderer.py` allowing mobile viewers to swipe left to advance or right to go back. A gesture during which more than one finger touched the screen (pinch-zoom) never changes slides.
 
 3. **Discrete Density Tiers (`spacious`, `balanced`, `compact`)**:
    - Rather than unpredictable floating-point font equations per slide, implemented a discrete 3-tier heuristic classifier in `generator/models.py` (`calculate_density_tier`):
      - **`spacious`**: 1–2 cards, $\le 3$ bullets, or short quotes. Sets bold typography (headings 46–64px / 32pt, body 24–28px / 24pt, spacious card paddings).
      - **`balanced`**: 3–4 cards, 4–5 bullets. Confident presentation typography (~30% larger than legacy defaults).
-     - **`compact`**: 5+ cards, 6+ bullets, dense tables or long code. Scaled to comfortably fit within 900px vertical space without overflowing.
+     - **`compact`**: 5+ cards, 6+ bullets, dense tables or long code, or cards whose estimated wrapped line count exceeds the balanced budget (see ADR-015).
    - In `html_renderer.py`, `.slide` is tagged with `.density-{slide.density_tier.value}` and styled via semantic classes (`.slide-para`, `.slide-intro`, `.slide-footnote`).
    - In `pptx_renderer.py`, `slide.density_tier` drives title `Pt(...)`, body `Pt(...)`, card labels, and paragraph spacing.
 
@@ -339,18 +341,17 @@ User feedback on presentation navigation and card density highlighted two incons
 1. **Constant Slide Heading Typography (Tri-Format Parity)**:
    - Content slide headings (`.slide-heading`) are fixed at a constant **48 px** (line-height: 1.22) in HTML/PDF and **32 pt** in PowerPoint across all density tiers.
    - Category leads (`.slide-category`) are uniform at 18 px (PPTX: 12 pt).
-2. **Line-Count Aware Card Density Classification**:
-   - `calculate_density_tier()` in `generator/models.py` for `SlideType.CARDS` now inspects vertical line distribution:
+2. **Wrapped-Line Aware Card Density Classification**:
+   - `calculate_density_tier()` in `generator/models.py` estimates the wrapped line count of each card (title lines plus description lines, after `strip_markdown`), using a chars-per-line width that depends on the card count (`{1: 70, 2: 34, 3: 22, 4: 16}`, derived from PPTX card widths; titles use 0.75× of that width for their larger font):
      ```python
-     max_desc_lines = max((c.description.count("\n") + 1 for c in slide.cards), default=1)
      if num_cards <= 2 and total_card_text < 320:
          return DensityTier.SPACIOUS
-     elif num_cards <= 4 and (total_card_text < 750 or max_desc_lines <= 6):
+     elif num_cards <= 4 and total_card_text < 750 and max_card_lines <= _CARD_LINE_BUDGET:  # 10
          return DensityTier.BALANCED
      else:
          return DensityTier.COMPACT
      ```
-   - 4-card grids with concise descriptions ($\le 6$ lines per card) comfortably remain in `DensityTier.BALANCED`, retaining 30 px card titles and 22 px body text with balanced vertical canvas filling.
+   - Both the character budget and the line budget must hold. The first version of this rule combined them with `or` and counted raw `\n` characters, which kept 4-card slides with long single-line descriptions in `BALANCED` and made them overflow the canvas (PISA slides 2–4).
 
 ### Rationale
 - Slide headings remain rock-solid and stable during navigation.
@@ -422,7 +423,8 @@ Previously:
 1. **Model & Theme Integration (`models.py`, `theme_engine.py`, `schema.json`)**:
    - Added `BulletStyle` enum: `CHEVRON = "chevron"`, `EDITORIAL = "editorial"`, `REFINED = "refined"`.
    - Added `bullet_style: BulletStyle = BulletStyle.CHEVRON` to `ThemeConfig`.
-   - Updated `schema.json` to validate optional `"bullet_style"` property in themes.
+   - Updated `schema.json` to validate an optional top-level `"bullet_style"` property in themes. This is the only location; `styles.bullet_style` is not accepted.
+   - `theme_generator.SYSTEM_PROMPT` and `THEME_PROMPT.md` list `bullet_style`, and `--ai-theme` output falls back to `chevron` (and archetype `cards`) when the model returns an invalid value.
 2. **CLI Parameterization (`cli.py`)**:
    - Added `--bullet-style` (alias `--bullets`) supporting `chevron`, `editorial`, `refined`.
    - CLI defaults to theme specification (or `chevron` if theme does not specify). CLI flag overrides theme default.
@@ -430,7 +432,7 @@ Previously:
    - **HTML (`html_renderer.py`)**:
      - `_render_card_description_html()` parses bullet lines in cards into structured `<ul class="card-bullets"><li>...</li></ul>`.
      - `_build_bullet_css()` injects responsive, density-scaled CSS pseudo-element markers (`›`, `–`, or `•`) in the theme's accent color (`var(--accent)`).
-     - Standard `.content-list:not(.task-list)` bullet markers also synchronize with the selected bullet style.
+     - Standard `.content-list li:not(.task-item)` bullet markers also synchronize with the selected bullet style, so plain items in a mixed task list keep their bullet (as in PPTX).
    - **PowerPoint (`pptx_renderer.py`)**:
      - `_render_card_description_pptx()` formats bullet lines in card text frames with accent-colored bullet runs (`› `, `– `, `• `) and clean line spacing.
      - Standard slide lists apply matching accent bullet markers.
@@ -488,11 +490,12 @@ Investigation revealed:
 ### Decision
 1. **Arrow Optical Midline Lift (`html_renderer.py`)**:
    - Added `vertical-align: 0.12em;` to `.md-arrow`. This shifts the arrow shaft upward into the visual character midline across all font sizes.
-2. **Bullet First-Line Midline Flex Alignment (`html_renderer.py`)**:
-   - Replaced fixed pixel `top` offsets with flex centering on the first line:
-     `top: 0; height: 1.5em; display: inline-flex; align-items: center; justify-content: center;`
-   - Added subtle optical adjustments (`transform: translateY(-0.02em)` for editorial en-dash, `-0.05em` for chevron; exact `margin-top: calc(1.5em / 2 - R)` for refined dot).
-   - Removed conflicting legacy `li::before` `top` rules from `.density-spacious`, `.density-balanced`, and `.density-compact`.
+2. **Bullet Markers in the Text Flow (`html_renderer.py`)**:
+   - The first attempt (flex box with `height: 1.5em`, an enlarged marker `font-size`, and `translateY` fudges per style) still sagged 2–3 px on 22 px / 18 px card bullets: the `em` resolved against the enlarged marker, and the box never followed the per-tier line heights (1.6/1.55/1.5 for lists, 1.5/1.45/1.4 for card bullets).
+   - Markers are now inline-block `::before` elements in the normal text flow, hung into the li's left padding with `margin-left: calc(L - var(--bullet-indent))` and a matching negative `margin-right`. Density tiers set `--bullet-indent` instead of `padding-left`.
+   - Chevron and en-dash keep the li's font-size and line-height, so they share the first line's baseline; they are enlarged with `transform: scale(1.15)` / `scale(1.05)`, which does not affect layout.
+   - The refined dot uses `vertical-align: middle` (baseline + half the x-height, i.e. the x-height midline by CSS definition), sized by a per-tier `--bullet-dot` variable (9/8/7 px).
+   - No per-tier or per-style vertical offsets remain. Measured in headless Chromium: marker centre within 1 px of the x-height midline for every style, tier, list type and bundled font.
 3. **Card Heading Title Disambiguation (`parser.py`)**:
    - Added `"#"` to excluded prefixes in `first_s.startswith(...)` during candidate title selection, ensuring card headings (`### `) are preserved as card components.
 
@@ -500,6 +503,29 @@ Investigation revealed:
 - Guarantees visual harmony: arrows and bullet markers sit on the horizontal axis of text.
 - Multi-line wrapped bullet items remain anchored to the first line's midline.
 - Maintains Tri-Format parity across HTML and vector PDF.
+
+---
+
+## ADR-021: Plain-Text Deck Title and Markup-Safe Card Title Extraction
+
+### Context
+ADR-017 and ADR-019 keep inline markdown in card titles and slide headings. Several code paths still assumed plain text, which made literal markdown show up on slides:
+- Card titles demoted back into list items were wrapped in `**` again (`****Tri-Format paritás****`).
+- The deck title (category label on every slide, title pill, `<title>`, PPTX badges) showed raw `**`/`->`.
+- `- **Kulcs:** érték` split at the colon inside the bold marker, giving the title `**Kulcs`.
+- `.rstrip(":")` missed colons inside emphasis (`_Részei:_`).
+- Multi-line HTML comments inside card bodies leaked onto slides, with `-->` turned into an arrow.
+
+### Decision
+1. `PresentationData.title` is plain text (`strip_markdown` of the title slide heading); slide headings keep their markdown. HTML escapes it everywhere, including `<title>`.
+2. Card titles are split from bullets by first matching a leading emphasis marker that contains the colon (`**T:**`, `__T:__`, `*T:*`, `_T:_`), otherwise at the first colon outside any inline token (code, links, raw URLs, emphasis). The title keeps its markup.
+3. A single `_strip_trailing_colon` helper removes trailing colons before or after closing emphasis markers at every title site.
+4. Demoting a card into a list item wraps the title in `**` only when it has no markup of its own.
+5. HTML comments outside fenced code are removed in the parser; the inline comment token also matches across newlines.
+6. Link text is parsed recursively in both renderers (`parse_markdown_runs` and `render_markdown_html`); HTML renders link text without link tokens so anchors never nest.
+
+### Rationale
+Text that is shown as markdown is rendered as markdown, and text used as a plain label is stripped once at the source, so the three formats can't drift apart.
 
 
 

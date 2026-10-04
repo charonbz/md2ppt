@@ -220,7 +220,7 @@ def watch_and_rebuild(
                 if success:
                     print(f"✅ Rebuild completed in {elapsed:.2f}s! Refresh browser to view changes.")
                 else:
-                    print(f"⚠️ Rebuild completed with warnings in {elapsed:.2f}s.")
+                    print(f"❌ Rebuild failed after {elapsed:.2f}s (see errors above).", file=sys.stderr)
             except Exception as e:
                 print(f"❌ Rebuild error: {e}", file=sys.stderr)
 
@@ -303,7 +303,7 @@ def main():
     parser.add_argument(
         "--no-watch",
         action="store_true",
-        help="Disable automatic file watching when running --serve."
+        help="Disable automatic file watching (overrides --watch and the --serve default)."
     )
 
     args = parser.parse_args()
@@ -372,11 +372,11 @@ def main():
     if not success:
         return 1
 
-    # Check if watching should be activated
-    should_watch = (args.serve is not None and not args.no_watch) or args.watch
+    # Watching is enabled by --watch or implicitly by --serve; --no-watch always wins.
+    should_watch = not args.no_watch and (args.watch or args.serve is not None)
 
     # Standalone watch mode (without --serve)
-    if args.watch and args.serve is None:
+    if should_watch and args.serve is None:
         print(f"👀 Watching '{source_dir}' for changes (theme: {args.theme}). Press Ctrl + C to stop.")
         stop_event = threading.Event()
         try:
