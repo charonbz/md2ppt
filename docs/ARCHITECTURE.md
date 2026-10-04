@@ -157,10 +157,19 @@ Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for 
 # Orthogonal override (warm_academic palette with neubrutalism structure):
 ./run.py slideshow_1 --theme warm_academic --archetype neubrutalism
 
+# Configure bullet point style:
+./run.py pisa --theme warm_academic --archetype editorial --bullet-style editorial
+
 # Discover all archetypes & themes:
 ./run.py --list-archetypes
 ./run.py --list-themes
 ```
+
+- **Configurable Bullet Styles (`BulletStyle`, `--bullet-style`, `--bullets`)**:
+  - `chevron` (default): Dynamic directional arrow (`›`) in accent color.
+  - `editorial`: Literary typography en-dash (`–`) in accent color.
+  - `refined`: Centered geometric round dot (`•`) in accent color.
+  - Card bullet lines (Markdown lines starting with `- `, `* `, `• `) are automatically structured into `.card-bullets` lists with density tier scaling, rendered natively in HTML/PDF and with colored runs in PowerPoint.
 
 - **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON with `"archetype": "cards"`.
 

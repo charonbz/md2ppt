@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from typing import Optional
 from PIL import Image
@@ -8,7 +9,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls
-from ..models import PresentationData, SlideData, SlideType, ThemeConfig, ArchetypeType, DensityTier
+from ..models import PresentationData, SlideData, SlideType, ThemeConfig, ArchetypeType, DensityTier, BulletStyle
 from ..markdown_utils import parse_markdown_runs
 
 
@@ -80,6 +81,44 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
                 rPr.append(parse_xml(f'<a:highlight {nsdecls("a")}><a:srgbClr val="FFD700"/></a:highlight>'))
             except Exception:
                 pass
+
+
+def _render_card_description_pptx(desc_box, desc_text: str, font_name: str, card_desc_size: Pt, secondary_rgb: RGBColor, accent_rgb: RGBColor, bullet_style: BulletStyle):
+    """Renders card description, formatting bullet lines with styled bullet markers in accent color."""
+    # ponytail: clean bullet formatting per bullet_style
+    tf = desc_box.text_frame
+    tf.word_wrap = True
+    lines = desc_text.split("\n")
+    has_bullet = any(re.match(r"^[-*•]\s+(.*)$", line.strip()) for line in lines)
+
+    if not has_bullet:
+        dp = tf.paragraphs[0]
+        dp.line_spacing = 1.3
+        _add_formatted_runs(dp, desc_text, font_name, card_desc_size, secondary_rgb)
+        return
+
+    bullet_marker = "› " if bullet_style == BulletStyle.CHEVRON else ("– " if bullet_style == BulletStyle.EDITORIAL else "• ")
+
+    first = True
+    for line in lines:
+        s = line.strip()
+        if not s:
+            continue
+        p = tf.paragraphs[0] if first else tf.add_paragraph()
+        first = False
+        p.line_spacing = 1.25
+        p.space_after = Pt(3)
+        m = re.match(r"^[-*•]\s+(.*)$", s)
+        if m:
+            bullet_run = p.add_run()
+            bullet_run.text = bullet_marker
+            bullet_run.font.name = font_name
+            bullet_run.font.size = card_desc_size
+            bullet_run.font.bold = True
+            bullet_run.font.color.rgb = accent_rgb
+            _add_formatted_runs(p, m.group(1).strip(), font_name, card_desc_size, secondary_rgb)
+        else:
+            _add_formatted_runs(p, s, font_name, card_desc_size, secondary_rgb)
 
 
 def _add_picture_fit(slide, img_path: Path, left, top, max_width, max_height):
@@ -502,11 +541,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
 
             # Desc
             desc_box = slide.shapes.add_textbox(left + Inches(0.2), top + Inches(1.8), card_w - Inches(0.3), Inches(2.2))
-            tf_d = desc_box.text_frame
-            tf_d.word_wrap = True
-            dp = tf_d.paragraphs[0]
-            dp.line_spacing = 1.35
-            _add_formatted_runs(dp, c.description, font_name, card_desc_size, secondary_rgb)
+            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
 
         elif arch == ArchetypeType.NEUBRUTALISM:
             # Hard black shadow shape
@@ -536,7 +571,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             bp = badge.text_frame.paragraphs[0]
             bp.text = f"0{c.card_index}" if c.card_index < 10 else str(c.card_index)
             bp.font.name = font_name
-            bp.font.size = Pt(13)
+            bp.font.size = Pt(12)
             bp.font.bold = True
             bp.font.color.rgb = RGBColor(0, 0, 0)
             bp.alignment = PP_ALIGN.CENTER
@@ -548,11 +583,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
-            tf_d = desc_box.text_frame
-            tf_d.word_wrap = True
-            dp = tf_d.paragraphs[0]
-            dp.line_spacing = 1.3
-            _add_formatted_runs(dp, c.description, font_name, card_desc_size, secondary_rgb)
+            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
 
         elif arch == ArchetypeType.MINIMAL:
             # Transparent cards, oversized numeric badge above title
@@ -571,11 +602,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left, top + Inches(1.9), card_w, Inches(2.2))
-            tf_d = desc_box.text_frame
-            tf_d.word_wrap = True
-            dp = tf_d.paragraphs[0]
-            dp.line_spacing = 1.35
-            _add_formatted_runs(dp, c.description, font_name, card_desc_size, secondary_rgb)
+            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
 
         elif arch == ArchetypeType.CORPORATE:
             # Sharp rectangle + top accent banner
@@ -609,11 +636,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.35), top + Inches(2.1), card_w - Inches(0.7), Inches(1.9))
-            tf_d = desc_box.text_frame
-            tf_d.word_wrap = True
-            dp = tf_d.paragraphs[0]
-            dp.line_spacing = 1.3
-            _add_formatted_runs(dp, c.description, font_name, card_desc_size, secondary_rgb)
+            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
 
         else:
             # Terminal & Modern Cards
@@ -644,11 +667,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             _add_formatted_runs(tp, f"{title_prefix}{c.title}", font_name, card_title_size, primary_rgb, is_title=True)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
-            tf_d = desc_box.text_frame
-            tf_d.word_wrap = True
-            dp = tf_d.paragraphs[0]
-            dp.line_spacing = 1.3
-            _add_formatted_runs(dp, c.description, font_name, card_desc_size, secondary_rgb)
+            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
 
 
 def _render_pptx_code_slide(slide, slide_data: SlideData, theme: ThemeConfig,
@@ -849,7 +868,8 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
             bullet_run.font.color.rgb = secondary_rgb
             clean_item = item_text[4:]
         else:
-            bullet_run.text = "• "
+            bullet_marker = "› " if theme.bullet_style == BulletStyle.CHEVRON else ("– " if theme.bullet_style == BulletStyle.EDITORIAL else "• ")
+            bullet_run.text = bullet_marker
             bullet_run.font.color.rgb = accent_rgb
             clean_item = item_text
         bullet_run.font.name = font_name

@@ -1,10 +1,11 @@
 import base64
 import html
+import re
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any
-from ..models import PresentationData, SlideData, SlideType, ThemeConfig, TableData
+from ..models import PresentationData, SlideData, SlideType, ThemeConfig, TableData, BulletStyle
 from ..markdown_utils import render_markdown_html
 
 
@@ -105,6 +106,113 @@ def _prepare_audio_asset(src_path: Path, dist_dir: Path) -> Dict[str, str]:
     }
 
 
+def _build_bullet_css(bullet_style: BulletStyle) -> str:
+    """Returns CSS rules for the configured bullet style (chevron, editorial, refined)."""
+    # ponytail: minimal CSS per bullet style option
+    if bullet_style == BulletStyle.EDITORIAL:
+        return """
+    /* Editorial Dash (–) */
+    .card-bullets li::before {
+      content: "–";
+      position: absolute;
+      left: 4px;
+      top: -1px;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 1.2em;
+      line-height: 1.45;
+    }
+    .content-list:not(.task-list) li::before {
+      content: "–";
+      border-radius: 0 !important;
+      background: transparent !important;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 1.2em;
+      line-height: 1;
+    }
+    .density-spacious .content-list:not(.task-list) li::before { left: 8px; top: 12px; }
+    .density-balanced .content-list:not(.task-list) li::before { left: 6px; top: 10px; }
+    .density-compact .content-list:not(.task-list) li::before { left: 5px; top: 8px; }
+"""
+    elif bullet_style == BulletStyle.REFINED:
+        return """
+    /* Refined Bullet Dot (•) */
+    .card-bullets li::before {
+      content: "";
+      position: absolute;
+      left: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .density-spacious .card-bullets li::before { top: 12px; width: 8px; height: 8px; }
+    .density-balanced .card-bullets li::before { top: 10px; width: 7px; height: 7px; }
+    .density-compact .card-bullets li::before { top: 8px; width: 6px; height: 6px; }
+    .content-list:not(.task-list) li::before {
+      content: "";
+      border-radius: 50%;
+      background: var(--accent);
+    }
+"""
+    else:  # CHEVRON (default)
+        return """
+    /* Chevron (›) */
+    .card-bullets li::before {
+      content: "›";
+      position: absolute;
+      left: 4px;
+      top: -2px;
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 1.3em;
+      line-height: 1.45;
+    }
+    .content-list:not(.task-list) li::before {
+      content: "›";
+      border-radius: 0 !important;
+      background: transparent !important;
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 1.3em;
+      line-height: 1;
+    }
+    .density-spacious .content-list:not(.task-list) li::before { left: 8px; top: 10px; }
+    .density-balanced .content-list:not(.task-list) li::before { left: 6px; top: 8px; }
+    .density-compact .content-list:not(.task-list) li::before { left: 5px; top: 6px; }
+"""
+
+
+def _render_card_description_html(desc: str) -> str:
+    """Formats card description, converting bullet lines into a styled .card-bullets list."""
+    if not desc:
+        return ""
+    lines = desc.split("\n")
+    has_bullet = any(re.match(r"^[-*•]\s+(.*)$", line.strip()) for line in lines)
+    if not has_bullet:
+        return f'<p class="card-desc">{render_markdown_html(desc)}</p>'
+
+    out = []
+    in_list = False
+    for line in lines:
+        stripped = line.strip()
+        m = re.match(r"^[-*•]\s+(.*)$", stripped)
+        if m:
+            if not in_list:
+                out.append('<ul class="card-bullets">')
+                in_list = True
+            item_html = render_markdown_html(m.group(1).strip())
+            out.append(f'<li>{item_html}</li>')
+        else:
+            if in_list:
+                out.append('</ul>')
+                in_list = False
+            if stripped:
+                out.append(f'<p class="card-desc-p">{render_markdown_html(stripped)}</p>')
+    if in_list:
+        out.append('</ul>')
+    return f'<div class="card-desc">{"".join(out)}</div>'
+
+
 def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[int, Dict[str, str]], image_assets: Optional[Dict[str, Dict[str, str]]] = None) -> str:
     slides_html = []
     total_slides = len(pres.slides)
@@ -114,6 +222,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
         slides_html.append(_render_slide(slide, total_slides, theme, audio_info, deck_title=pres.title, image_assets=image_assets))
 
     slides_joined = "\n".join(slides_html)
+    bullet_css = _build_bullet_css(theme.bullet_style)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -497,6 +606,29 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       background: var(--accent);
     }}
 
+    /* Card Bullets Base */
+    .card-bullets {{
+      list-style: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: flex;
+      flex-direction: column;
+    }}
+
+    .card-bullets li {{
+      position: relative;
+      color: var(--secondary-text);
+    }}
+
+    .card-desc-p {{
+      margin: 0 0 8px 0;
+    }}
+    .card-desc-p:last-child {{
+      margin-bottom: 0;
+    }}
+
+{bullet_css}
+
     .task-list li::before {{
       display: none !important;
     }}
@@ -797,6 +929,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-spacious .card-index-badge {{ width: 48px; height: 48px; font-size: 1.3rem; }}
     .density-spacious .card-title {{ font-size: 36px; }}
     .density-spacious .card-desc {{ font-size: 26px; line-height: 1.6; }}
+    .density-spacious .card-bullets {{ gap: 12px; }}
+    .density-spacious .card-bullets li {{ font-size: 26px; line-height: 1.5; padding-left: 30px; }}
 
     .density-spacious .slide-table th {{ padding: 20px 28px; font-size: 22px; }}
     .density-spacious .slide-table td {{ padding: 20px 28px; font-size: 24px; }}
@@ -831,6 +965,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-balanced .card-index-badge {{ width: 40px; height: 40px; font-size: 1.1rem; }}
     .density-balanced .card-title {{ font-size: 30px; }}
     .density-balanced .card-desc {{ font-size: 22px; line-height: 1.55; }}
+    .density-balanced .card-bullets {{ gap: 10px; }}
+    .density-balanced .card-bullets li {{ font-size: 22px; line-height: 1.45; padding-left: 26px; }}
 
     .density-balanced .slide-table th {{ padding: 16px 22px; font-size: 18px; }}
     .density-balanced .slide-table td {{ padding: 16px 22px; font-size: 20px; }}
@@ -865,6 +1001,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-compact .card-index-badge {{ width: 32px; height: 32px; font-size: 0.9rem; }}
     .density-compact .card-title {{ font-size: 24px; }}
     .density-compact .card-desc {{ font-size: 18px; line-height: 1.45; }}
+    .density-compact .card-bullets {{ gap: 8px; }}
+    .density-compact .card-bullets li {{ font-size: 18px; line-height: 1.4; padding-left: 22px; }}
 
     .density-compact .slide-table th {{ padding: 13px 18px; font-size: 15px; }}
     .density-compact .slide-table td {{ padding: 13px 18px; font-size: 16px; }}
@@ -1607,14 +1745,14 @@ def _render_slide(slide: SlideData, total_slides: int, theme: ThemeConfig,
         for card in slide.cards:
             badge_idx = f"0{card.card_index}" if card.card_index < 10 else str(card.card_index)
             c_title = render_markdown_html(card.title)
-            c_desc = render_markdown_html(card.description)
+            desc_html = _render_card_description_html(card.description)
             cards_html.append(f"""
             <div class="info-card">
               <div class="card-top">
                 <span class="card-index-badge">{badge_idx}</span>
                 <h3 class="card-title">{c_title}</h3>
               </div>
-              <p class="card-desc">{c_desc}</p>
+              {desc_html}
             </div>
             """)
         cards_joined = "\n".join(cards_html)

@@ -406,6 +406,41 @@ In `pisa/slides.md`, the card title `### Matematikai érvelés *(Reasoning)*` re
 - Authors can freely emphasize, annotate translations, or format secondary terms in card titles without markdown syntax being stripped.
 - Preserves full tri-format visual consistency with minimal, non-invasive code changes.
 
+---
+
+## ADR-018: Configurable Presentation Bullet Styles (chevron, editorial, refined)
+
+### Context
+Following review of PISA slide mockups, the user requested configurable bullet styles with `chevron` as the default alongside `editorial` and `refined`:
+> *"make it an option: editorial, refined, chevron (default)"*
+
+Previously:
+- Card descriptions containing bullet items (`- item`) were rendered as unstructured text paragraphs with literal `- ` hyphens joined by `<br/>`.
+- Standard list slides were hardcoded to solid black/accent circles (`• `).
+
+### Decision
+1. **Model & Theme Integration (`models.py`, `theme_engine.py`, `schema.json`)**:
+   - Added `BulletStyle` enum: `CHEVRON = "chevron"`, `EDITORIAL = "editorial"`, `REFINED = "refined"`.
+   - Added `bullet_style: BulletStyle = BulletStyle.CHEVRON` to `ThemeConfig`.
+   - Updated `schema.json` to validate optional `"bullet_style"` property in themes.
+2. **CLI Parameterization (`cli.py`)**:
+   - Added `--bullet-style` (alias `--bullets`) supporting `chevron`, `editorial`, `refined`.
+   - CLI defaults to theme specification (or `chevron` if theme does not specify). CLI flag overrides theme default.
+3. **Tri-Format Implementation**:
+   - **HTML (`html_renderer.py`)**:
+     - `_render_card_description_html()` parses bullet lines in cards into structured `<ul class="card-bullets"><li>...</li></ul>`.
+     - `_build_bullet_css()` injects responsive, density-scaled CSS pseudo-element markers (`›`, `–`, or `•`) in the theme's accent color (`var(--accent)`).
+     - Standard `.content-list:not(.task-list)` bullet markers also synchronize with the selected bullet style.
+   - **PowerPoint (`pptx_renderer.py`)**:
+     - `_render_card_description_pptx()` formats bullet lines in card text frames with accent-colored bullet runs (`› `, `– `, `• `) and clean line spacing.
+     - Standard slide lists apply matching accent bullet markers.
+   - **PDF (`pdf_renderer.py`)**: Vector PDF rendered from HTML inherits identical styling.
+
+### Rationale
+- Provides cohesive, publication-quality bullet styling across all presentations.
+- Default `chevron` gives high visual energy and reading momentum, while `editorial` provides dignified literary quietness and `refined` offers classical geometric order.
+
+
 
 
 

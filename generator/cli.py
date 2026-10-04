@@ -33,6 +33,7 @@ def build_presentation(
     source_dir: Path,
     theme_name: str = DEFAULT_THEME_ID,
     archetype_override: Optional[str] = None,
+    bullet_style_override: Optional[str] = None,
     format_str: str = "all",
     verbose: bool = True,
 ) -> bool:
@@ -42,13 +43,20 @@ def build_presentation(
         print(f"❌ Error: 'slides.md' not found in directory: {slides_file}", file=sys.stderr)
         return False
 
-    # Load theme & archetype
+    # Load theme & archetype & bullet style
     try:
-        theme = load_theme(theme_name, archetype_override=archetype_override)
+        # ponytail: pass bullet_style_override to load_theme
+        theme = load_theme(
+            theme_name,
+            archetype_override=archetype_override,
+            bullet_style_override=bullet_style_override
+        )
         if verbose:
             override_note = " (overridden via CLI)" if archetype_override else ""
+            bullet_note = " (overridden via CLI)" if bullet_style_override else ""
             print(f"\n🎨 Applied theme: {theme.name} [{theme.id}]")
             print(f"🏛️ Applied archetype: {theme.archetype.value}{override_note}")
+            print(f"🔸 Applied bullet style: {theme.bullet_style.value}{bullet_note}")
     except Exception as e:
         print(f"❌ Error loading theme: {e}", file=sys.stderr)
         return False
@@ -165,6 +173,7 @@ def watch_and_rebuild(
     format_str: str,
     stop_event: threading.Event,
     poll_interval: float = 0.5,
+    bullet_style_override: Optional[str] = None,
 ):
     """Background watcher that monitors source files and rebuilds the presentation on modification."""
     last_fingerprint = get_source_fingerprint(source_dir, theme_name)
@@ -203,6 +212,7 @@ def watch_and_rebuild(
                     source_dir=source_dir,
                     theme_name=theme_name,
                     archetype_override=archetype_override,
+                    bullet_style_override=bullet_style_override,
                     format_str=format_str,
                     verbose=False,
                 )
@@ -239,6 +249,14 @@ def main():
         type=str,
         choices=["editorial", "cards", "neubrutalism", "terminal", "minimal", "corporate"],
         help="Override the visual structural archetype (editorial, cards, neubrutalism, terminal, minimal, corporate)."
+    )
+
+    parser.add_argument(
+        "--bullet-style",
+        "--bullets",
+        type=str,
+        choices=["chevron", "editorial", "refined"],
+        help="Bullet point style: chevron (default: ›), editorial (–), refined (•)."
     )
 
     parser.add_argument(
@@ -347,6 +365,7 @@ def main():
         source_dir=source_dir,
         theme_name=args.theme,
         archetype_override=args.archetype,
+        bullet_style_override=args.bullet_style,
         format_str=args.format,
         verbose=True,
     )
@@ -361,7 +380,14 @@ def main():
         print(f"👀 Watching '{source_dir}' for changes (theme: {args.theme}). Press Ctrl + C to stop.")
         stop_event = threading.Event()
         try:
-            watch_and_rebuild(source_dir, args.theme, args.archetype, args.format, stop_event)
+            watch_and_rebuild(
+                source_dir,
+                args.theme,
+                args.archetype,
+                args.format,
+                stop_event,
+                bullet_style_override=args.bullet_style
+            )
         except KeyboardInterrupt:
             print("\n🛑 Watcher stopped.")
         return 0
@@ -376,6 +402,7 @@ def main():
             watcher_thread = threading.Thread(
                 target=watch_and_rebuild,
                 args=(source_dir, args.theme, args.archetype, args.format, stop_event),
+                kwargs={"bullet_style_override": args.bullet_style},
                 daemon=True,
             )
             watcher_thread.start()

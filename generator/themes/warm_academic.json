@@ -3,6 +3,7 @@
   "name": "Warm Academic (Classic Editorial)",
   "description": "Warm cream background with elegant burgundy accents and serif typography.",
   "archetype": "editorial",
+  "bullet_style": "editorial",
   "colors": {
     "background": "#FDFBF7",
     "card_bg": "#FFFFFF",

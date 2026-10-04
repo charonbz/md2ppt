@@ -1,5 +1,5 @@
 # PISA 2025 összefoglaló jelentés reflexiói
-Készítette: Boncz Zoltán
+Készítette: Boncz Zoltán *(bonczz@gmail.com)*
 ---
 
 # Matematikai ismeretek
@@ -56,18 +56,26 @@ a kritikai gondolkodást méri.
 
 ---
 
-### Új ismeretek
-- Kína: csak fejlett régiók
-(Bejing) és Sanghaj (Shanghai) városa, valamint Csiangszu (Jiangsu) 
+# Észrevételek
 
-és Csöcsiang (Zheijang) tar
-- Az eredmények értelmezésekor fontos figyelembe venni, hogy az országban a mintaválasztási követelmények nem teljesültek teljeskörűen.
-- 3-as képességszint (480-553): Bizonyos szinten képesek
-Százalékokat, hagyományos és tizedes törteket kezelni, tuenak arányosságokkal dolgozni.
+### Nem teljes ország
+**Kína**
+Bejing és Shanghai városa
+Jiangsu és (Zheijang) tartományok
+
+### Nem reprezentatív mintavétel
+**Egyesült Államok, Hollandia, ...**
+^*^ *Az eredmények értelmezésekor fontos figyelembe venni,
+hogy az országban a mintaválasztási követelmények
+nem teljesültek teljeskörűen.*
+
+3-as képességszint (480-553):
+Bizonyos szinten képesek százalékokat, hagyományos és tizedes törteket kezelni, tudnak arányosságokkal dolgozni.
 
 ---
 
-# Alkalmazaszintu ismeretek
+# Tárgyi tudás -> Kompetencia *(fejtudás -> kéztudás)*
+
 
 - elit alakulat aknaveto
 - wc-papir

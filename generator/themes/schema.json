@@ -21,6 +21,11 @@
       "enum": ["editorial", "cards", "neubrutalism", "terminal", "minimal", "corporate"],
       "description": "Visual structural archetype governing shapes, borders, shadows, and layout"
     },
+    "bullet_style": {
+      "type": "string",
+      "enum": ["chevron", "editorial", "refined"],
+      "description": "Bullet point style: chevron (›), editorial (–), refined (•)"
+    },
     "colors": {
       "type": "object",
       "required": ["background", "card_bg", "primary_text", "secondary_text", "accent"],
@@ -52,7 +57,8 @@
         "card_radius_px": { "type": "integer" },
         "card_shadow": { "type": "string" },
         "title_align": { "type": "string", "enum": ["left", "center"] },
-        "border_width_px": { "type": "integer" }
+        "border_width_px": { "type": "integer" },
+        "bullet_style": { "type": "string", "enum": ["chevron", "editorial", "refined"] }
       }
     }
   }

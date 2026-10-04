@@ -29,6 +29,14 @@ class DensityTier(str, Enum):
     COMPACT = "compact"
 
 
+class BulletStyle(str, Enum):
+    # ponytail: minimal 3-way bullet style option
+    CHEVRON = "chevron"    # '›' (default)
+    EDITORIAL = "editorial"  # '–' (en-dash)
+    REFINED = "refined"    # '•' (accent round dot)
+
+
+
 @dataclass
 class CardItem:
     title: str
@@ -135,6 +143,7 @@ class ThemeConfig:
     fonts: Dict[str, str]
     styles: Dict[str, Any]
     archetype: ArchetypeType = ArchetypeType.CARDS
+    bullet_style: BulletStyle = BulletStyle.CHEVRON
 
     def hex_to_rgb(self, hex_code: str) -> tuple[int, int, int]:
         hex_code = hex_code.lstrip("#")

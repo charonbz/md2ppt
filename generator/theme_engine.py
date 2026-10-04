@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import Dict, List, Optional
-from .models import ThemeConfig, ArchetypeType
+from .models import ThemeConfig, ArchetypeType, BulletStyle
 
 THEMES_DIR = Path(__file__).parent / "themes"
 
@@ -76,7 +76,11 @@ def list_available_themes() -> List[Dict[str, str]]:
     return themes
 
 
-def load_theme(theme_id: str, archetype_override: Optional[str] = None) -> ThemeConfig:
+def load_theme(
+    theme_id: str,
+    archetype_override: Optional[str] = None,
+    bullet_style_override: Optional[str] = None
+) -> ThemeConfig:
     theme_file = THEMES_DIR / f"{theme_id}.json"
     if not theme_file.exists():
         # Fallback to default
@@ -97,6 +101,21 @@ def load_theme(theme_id: str, archetype_override: Optional[str] = None) -> Theme
         valid_archs = ", ".join(ARCHETYPES_INFO.keys())
         raise ValueError(
             f"Unknown archetype '{selected_archetype_str}'. Available archetypes: {valid_archs}"
+        )
+
+    # Determine bullet style (chevron, editorial, refined)
+    selected_bullet_str = (
+        bullet_style_override
+        or data.get("bullet_style")
+        or data.get("styles", {}).get("bullet_style")
+        or "chevron"
+    )
+    try:
+        bullet_style_enum = BulletStyle(selected_bullet_str.lower().strip())
+    except ValueError:
+        valid_bullets = ", ".join([b.value for b in BulletStyle])
+        raise ValueError(
+            f"Unknown bullet style '{selected_bullet_str}'. Available bullet styles: {valid_bullets}"
         )
 
     # Defaults
@@ -149,5 +168,6 @@ def load_theme(theme_id: str, archetype_override: Optional[str] = None) -> Theme
         colors=colors,
         fonts=fonts,
         styles=styles,
-        archetype=archetype_enum
+        archetype=archetype_enum,
+        bullet_style=bullet_style_enum
     )
