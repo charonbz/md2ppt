@@ -165,9 +165,11 @@ Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for 
 
 ### 4.3. Adaptive Density Tiers (`generator/models.py`, `generator/parser.py`)
 To prevent sparse slides from having tiny fonts while ensuring content-heavy slides never overflow the 16:9 canvas, the parser automatically assigns every slide a discrete density tier:
-- **`DensityTier.SPACIOUS`**: For light slides (1–2 cards, $\le 3$ short bullets, or concise quotes). Features bold, dominant hero typography (main titles up to 76px / Pt(58), headers up to 56px / Pt(38), body/bullets up to 34px / Pt(28), definitions up to 40px / Pt(30), and generous padding).
-- **`DensityTier.BALANCED`**: For standard content (3–4 cards, 4–5 bullets). Provides confident, high-impact presentation typography (main titles 64px / Pt(50), headers 48px / Pt(32), body/bullets 28px / Pt(22), definitions 32px / Pt(24)).
-- **`DensityTier.COMPACT`**: For dense slides (5+ cards, 6+ list items, tables, code). Maintains strict presentation readability thresholds (main titles 54px / Pt(42), headers 40px / Pt(26), body/bullets 24px / Pt(18)) rather than shrinking into illegible document text.
+- **`DensityTier.SPACIOUS`**: For light slides (1–2 cards, $\le 3$ short bullets, or concise quotes). Features bold, dominant hero typography (main cover titles up to 76px / Pt(58), body/bullets up to 34px / Pt(28), definitions up to 40px / Pt(30), and generous padding).
+- **`DensityTier.BALANCED`**: For standard content (3–4 cards, 4–5 bullets). Provides confident, high-impact presentation typography (main cover titles 64px / Pt(50), body/bullets 28px / Pt(22), definitions 32px / Pt(24)).
+- **`DensityTier.COMPACT`**: For dense slides (5+ cards, 6+ list items, tables, code). Maintains strict presentation readability thresholds (body/bullets 24px / Pt(18)) rather than shrinking into illegible document text.
+- **Constant Slide Heading Typography**: To prevent visual jumping when navigating across slides of varying density, content slide headings (`.slide-heading`) are fixed at a constant **48 px** (PowerPoint: **32 pt**) across all density tiers.
+- **Line-Count Aware Card Density**: The `CARDS` density classifier evaluates both total character volume and vertical line distribution (`max_desc_lines <= 6`), ensuring 4-card grids with 3–4 lines of prose remain in the comfortable `BALANCED` tier rather than downscaling prematurely.
 
 ### 4.4. HTML Renderer (`generator/renderers/html_renderer.py`)
 - **Zero-Dependency Standalone HTML**: Audio tracks are embedded directly into the HTML as Base64 data streams (`data:audio/mpeg;base64,...`). This bypasses browser `file:///` sandbox restrictions and makes the HTML completely portable.

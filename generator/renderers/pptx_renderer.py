@@ -871,7 +871,7 @@ def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme
     font_name = _get_font_name(theme)
     arch = theme.archetype
 
-    title_size = Pt(38) if density == DensityTier.SPACIOUS else (Pt(32) if density == DensityTier.BALANCED else Pt(26))
+    title_size = Pt(32)
 
     # Category lead
     cat_box = slide.shapes.add_textbox(Inches(1.0), Inches(0.5), Inches(8.0), Inches(0.35))

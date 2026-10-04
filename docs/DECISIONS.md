@@ -323,6 +323,40 @@ Investigation revealed:
 - Restores natural, expected line break formatting across all three first-class presentation formats (Web, PowerPoint, and PDF).
 - Users can naturally format card descriptions across multiple lines in Markdown without raw HTML tags leaking onto the presentation.
 
+---
+
+## ADR-015: Constant Slide Heading Typography and Line-Aware Card Density Classification
+
+### Context
+User feedback on presentation navigation and card density highlighted two inconsistencies:
+> *"a slide title ne valtoztasson meretet. lehet tobb karakter van rajta, de a sorok szama is szamitson, a 3. slide kartyai eleg szellosek alul, tobb is elferne ott."*
+*(The slide title should not change size. There may be more characters, but the number of lines should also matter; the cards on the 3rd slide are fairly spacious at the bottom, more would fit there.)*
+
+1. **Jumping Slide Titles**: Variable heading sizes across density tiers (56px in `SPACIOUS`, 48px in `BALANCED`, 40px in `COMPACT`) caused jarring visual jumping and inconsistent anchor points when navigating from slide to slide.
+2. **False Downscaling of 4-Card Grids**: The previous density heuristic classified any 4-card slide exceeding 550 characters into `COMPACT`. For cards containing 3-line prose sentences (e.g. 613 characters total), this caused fonts to shrink to 18px and left large empty areas at the bottom of the 1600×900 canvas.
+
+### Decision
+1. **Constant Slide Heading Typography (Tri-Format Parity)**:
+   - Content slide headings (`.slide-heading`) are fixed at a constant **48 px** (line-height: 1.22) in HTML/PDF and **32 pt** in PowerPoint across all density tiers.
+   - Category leads (`.slide-category`) are uniform at 18 px (PPTX: 12 pt).
+2. **Line-Count Aware Card Density Classification**:
+   - `calculate_density_tier()` in `generator/models.py` for `SlideType.CARDS` now inspects vertical line distribution:
+     ```python
+     max_desc_lines = max((c.description.count("\n") + 1 for c in slide.cards), default=1)
+     if num_cards <= 2 and total_card_text < 320:
+         return DensityTier.SPACIOUS
+     elif num_cards <= 4 and (total_card_text < 750 or max_desc_lines <= 6):
+         return DensityTier.BALANCED
+     else:
+         return DensityTier.COMPACT
+     ```
+   - 4-card grids with concise descriptions ($\le 6$ lines per card) comfortably remain in `DensityTier.BALANCED`, retaining 30 px card titles and 22 px body text with balanced vertical canvas filling.
+
+### Rationale
+- Slide headings remain rock-solid and stable during navigation.
+- Prevents premature downscaling on slides that have ample vertical space, maintaining optimal readability without awkward whitespace.
+
+
 
 
 

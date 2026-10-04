@@ -1,5 +1,5 @@
 # PISA 2025 összefoglaló jelentés reflexiói
-
+Készítette: Boncz Zoltán
 ---
 
 # Matematikai ismeretek
@@ -15,27 +15,48 @@
 - függvények
 - algebrai kifejezések
 - modellezés
-- változási folyamatok;
+- változási folyamatok
 
 ### Tér és alakzat (Space and shape):
-geometriai tulajdonságok, térbeli tájékozódás, térképek, formák és mintázatok felismerése;
+- geometriai tulajdonságok
+- térbeli tájékozódás
+- térképek
+- formák és mintázatok felismerése;
 
 ### Adat és bizonytalanság (Uncertainty and data):
-statisztika, valószínűségszámítás, grafikonok elem-zése, adatokból történő következtetések és a véletlen szerepe.
+- statisztika
+- valószínűségszámítás
+- grafikonok elemzése
+- adatokból történő következtetések
+- a véletlen szerepe
 
 ---
 
 # Matematikai folyamatok és gondolkodás
+- term: djdd
+
+
+---
 
 ### Matematizálás (Formulating):
-a hétköznapi, nyelvi formában megadott probléma lefordítása
-a matematika nyelvére (változók, egyenletek meghatározása);
+a hétköznapi, nyelvi formában megadott
+probléma lefordítása a matematika nyelvére
+(változók, egyenletek meghatározása).
+
 ### Alkalmazás (Employing):
-matematikai fogalmak, eljárások, tények és eszközök használata a matema-tikai probléma megoldásához (számolás, levezetés);
+matematikai fogalmak, eljárások, tények és eszközök
+használata a matematikai probléma megoldásához
+(számolás, levezetés).
+
 ### Ertelmezés és értékelés (Interpreting & Evaluating):
-a kapott matematikai eredmény visszahelyezése a valós kontextusba, és annak ellenőrzése, hogy a megoldásnak van-e reális értelme;
+a kapott matematikai eredmény visszahelyezése a
+valós kontextusba, és annak ellenőrzése,
+hogy a megoldásnak van-e reális értelme.
+
 ### Matematikai érvelés (Reasoning):
-a legfrissebb (PISA 2022-es keret óta kiemelt) rendszerszintű elem, amely a logikus gondolkodást, az összefüggések bizonyítását és a kritikai gondolkodást méri.
+Rendszerszintű elem, amely a logikus gondolkodást,
+az összefüggések bizonyítását és
+a kritikai gondolkodást méri.
 
 ---
 

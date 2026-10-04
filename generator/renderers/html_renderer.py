@@ -274,6 +274,8 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       font-family: var(--title-font);
       font-weight: 700;
       color: var(--primary-text);
+      font-size: 48px;
+      line-height: 1.22;
     }}
 
     .slide-content {{
@@ -772,9 +774,9 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-spacious .slide-main-title {{ font-size: 76px; line-height: 1.15; margin-bottom: 32px; }}
     .density-spacious .slide-author {{ font-size: 32px; }}
 
-    .density-spacious .slide-header {{ margin-bottom: 40px; }}
-    .density-spacious .slide-category {{ font-size: 20px; }}
-    .density-spacious .slide-heading {{ font-size: 56px; line-height: 1.2; }}
+    .density-spacious .slide-header {{ margin-bottom: 36px; }}
+    .density-spacious .slide-category {{ font-size: 18px; }}
+    .density-spacious .slide-heading {{ font-size: 48px; line-height: 1.22; }}
 
     .density-spacious .slide-intro {{ font-size: 28px; margin-bottom: 28px; }}
     .density-spacious .slide-footnote {{ font-size: 22px; margin-top: 26px; }}
@@ -840,9 +842,9 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
     .density-compact .slide-main-title {{ font-size: 54px; line-height: 1.2; margin-bottom: 22px; }}
     .density-compact .slide-author {{ font-size: 24px; }}
 
-    .density-compact .slide-header {{ margin-bottom: 24px; }}
-    .density-compact .slide-category {{ font-size: 16px; }}
-    .density-compact .slide-heading {{ font-size: 40px; line-height: 1.2; }}
+    .density-compact .slide-header {{ margin-bottom: 28px; }}
+    .density-compact .slide-category {{ font-size: 18px; }}
+    .density-compact .slide-heading {{ font-size: 48px; line-height: 1.22; }}
 
     .density-compact .slide-intro {{ font-size: 20px; margin-bottom: 16px; }}
     .density-compact .slide-footnote {{ font-size: 16px; margin-top: 14px; }}

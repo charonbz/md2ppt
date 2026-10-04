@@ -84,9 +84,10 @@ def calculate_density_tier(slide: SlideData) -> DensityTier:
     if slide.slide_type == SlideType.CARDS:
         num_cards = len(slide.cards)
         total_card_text = sum(len(c.title) + len(c.description) for c in slide.cards)
-        if num_cards <= 2 and total_card_text < 280:
+        max_desc_lines = max((c.description.count("\n") + 1 for c in slide.cards), default=1)
+        if num_cards <= 2 and total_card_text < 320:
             return DensityTier.SPACIOUS
-        elif num_cards <= 4 and total_card_text < 550:
+        elif num_cards <= 4 and (total_card_text < 750 or max_desc_lines <= 6):
             return DensityTier.BALANCED
         else:
             return DensityTier.COMPACT
