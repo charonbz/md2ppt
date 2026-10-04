@@ -76,16 +76,25 @@ Bizonyos szinten képesek százalékokat, hagyományos és tizedes törteket kez
 
 # Tárgyi tudás -> Kompetencia *(fejtudás -> kéztudás)*
 
+Mi a kéztudás:
+- Elit Alakulat, távolságbecslés
+- Milyen hosszú egy WC papír tekercs?
+- Összement gyerek ruhája és pizzája
 
-- elit alakulat aknaveto
-- wc-papir
-- osszement gyerek
+---
 
-- biztonsagos kornyezet
-	- szabad hibázni
+### Feltételek
+- Biztonságos környezet
+- Szabad hibázni
+
+### A tantárgy
 - matematika tisztazasa, mi a szerepe, hogyan hat az eletunkre, hogyan segiti a donteseinket es a kritikus gondolkodast.
+
+### Az oktató
 - oktatás vs facilitalas
-	- top down bottom up (deduktív vs induktív)
+- top down -> bottom up (deduktív -> induktív)
+
+### Az óra
 	- probléma felvetése
 	- közös megértés
 	- egyéni ötletelés
@@ -95,7 +104,8 @@ Bizonyos szinten képesek százalékokat, hagyományos és tizedes törteket kez
 	- matematikai formalizmus bemutatása
 	- matematikán belüli kapcsolódási pontok
 	- matematikán kívüli kapcsolódási pontok
-- számonkérés
-	- mit rontottál vs el mit csináltál jól
-	- egyértelmű követelmények
-	- önreflexió
+
+### Számonkérés
+- mit rontottál vs el mit csináltál jól
+- egyértelmű követelmények
+- önreflexió

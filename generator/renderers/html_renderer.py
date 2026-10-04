@@ -108,77 +108,83 @@ def _prepare_audio_asset(src_path: Path, dist_dir: Path) -> Dict[str, str]:
 
 def _build_bullet_css(bullet_style: BulletStyle) -> str:
     """Returns CSS rules for the configured bullet style (chevron, editorial, refined)."""
-    # ponytail: minimal CSS per bullet style option
+    # ponytail: clean vertical centering on the first line's character midline
     if bullet_style == BulletStyle.EDITORIAL:
         return """
     /* Editorial Dash (–) */
-    .card-bullets li::before {
+    .card-bullets li::before,
+    .content-list:not(.task-list) li::before {
       content: "–";
       position: absolute;
       left: 4px;
-      top: -1px;
+      top: 0;
+      height: 1.5em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       color: var(--accent);
       font-weight: 700;
-      font-size: 1.2em;
-      line-height: 1.45;
-    }
-    .content-list:not(.task-list) li::before {
-      content: "–";
+      font-size: 1.05em;
+      line-height: 1;
+      transform: translateY(-0.02em);
       border-radius: 0 !important;
       background: transparent !important;
-      color: var(--accent);
-      font-weight: 700;
-      font-size: 1.2em;
-      line-height: 1;
+      width: auto !important;
     }
-    .density-spacious .content-list:not(.task-list) li::before { left: 8px; top: 12px; }
-    .density-balanced .content-list:not(.task-list) li::before { left: 6px; top: 10px; }
-    .density-compact .content-list:not(.task-list) li::before { left: 5px; top: 8px; }
 """
     elif bullet_style == BulletStyle.REFINED:
         return """
     /* Refined Bullet Dot (•) */
-    .card-bullets li::before {
+    .card-bullets li::before,
+    .content-list:not(.task-list) li::before {
       content: "";
       position: absolute;
       left: 6px;
-      border-radius: 50%;
-      background: var(--accent);
+      top: 0;
+      border-radius: 50% !important;
+      background: var(--accent) !important;
     }
-    .density-spacious .card-bullets li::before { top: 12px; width: 8px; height: 8px; }
-    .density-balanced .card-bullets li::before { top: 10px; width: 7px; height: 7px; }
-    .density-compact .card-bullets li::before { top: 8px; width: 6px; height: 6px; }
-    .content-list:not(.task-list) li::before {
-      content: "";
-      border-radius: 50%;
-      background: var(--accent);
+    .density-spacious .card-bullets li::before,
+    .density-spacious .content-list:not(.task-list) li::before {
+      width: 9px;
+      height: 9px;
+      margin-top: calc(1.55em / 2 - 4.5px);
+    }
+    .density-balanced .card-bullets li::before,
+    .density-balanced .content-list:not(.task-list) li::before {
+      width: 8px;
+      height: 8px;
+      margin-top: calc(1.5em / 2 - 4px);
+    }
+    .density-compact .card-bullets li::before,
+    .density-compact .content-list:not(.task-list) li::before {
+      width: 7px;
+      height: 7px;
+      margin-top: calc(1.45em / 2 - 3.5px);
     }
 """
     else:  # CHEVRON (default)
         return """
     /* Chevron (›) */
-    .card-bullets li::before {
+    .card-bullets li::before,
+    .content-list:not(.task-list) li::before {
       content: "›";
       position: absolute;
       left: 4px;
-      top: -2px;
+      top: 0;
+      height: 1.5em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       color: var(--accent);
       font-weight: 800;
-      font-size: 1.3em;
-      line-height: 1.45;
-    }
-    .content-list:not(.task-list) li::before {
-      content: "›";
+      font-size: 1.15em;
+      line-height: 1;
+      transform: translateY(-0.05em);
       border-radius: 0 !important;
       background: transparent !important;
-      color: var(--accent);
-      font-weight: 800;
-      font-size: 1.3em;
-      line-height: 1;
+      width: auto !important;
     }
-    .density-spacious .content-list:not(.task-list) li::before { left: 8px; top: 10px; }
-    .density-balanced .content-list:not(.task-list) li::before { left: 6px; top: 8px; }
-    .density-compact .content-list:not(.task-list) li::before { left: 5px; top: 6px; }
 """
 
 
@@ -549,6 +555,7 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       font-style: normal;
       font-weight: 700;
       display: inline-block;
+      vertical-align: 0.12em;
       padding: 0 0.08em;
     }}
 
@@ -924,7 +931,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     .density-spacious .content-list {{ gap: 24px; margin-top: 24px; }}
     .density-spacious .content-list li {{ font-size: 32px; line-height: 1.6; padding-left: 40px; }}
-    .density-spacious .content-list li::before {{ left: 8px; top: 18px; width: 14px; height: 14px; }}
     .density-spacious .task-item {{ font-size: 32px; gap: 18px; margin-bottom: 20px; }}
     .density-spacious .task-checkbox {{ width: 32px; height: 32px; font-size: 20px; border-radius: 8px; margin-top: 4px; }}
 
@@ -960,7 +966,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     .density-balanced .content-list {{ gap: 18px; margin-top: 18px; }}
     .density-balanced .content-list li {{ font-size: 28px; line-height: 1.55; padding-left: 34px; }}
-    .density-balanced .content-list li::before {{ left: 6px; top: 15px; width: 10px; height: 10px; }}
     .density-balanced .task-item {{ font-size: 28px; gap: 16px; margin-bottom: 16px; }}
     .density-balanced .task-checkbox {{ width: 26px; height: 26px; font-size: 16px; border-radius: 6px; margin-top: 3px; }}
 
@@ -996,7 +1001,6 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
 
     .density-compact .content-list {{ gap: 14px; margin-top: 14px; }}
     .density-compact .content-list li {{ font-size: 24px; line-height: 1.5; padding-left: 28px; }}
-    .density-compact .content-list li::before {{ left: 5px; top: 12px; width: 8px; height: 8px; }}
     .density-compact .task-item {{ font-size: 24px; gap: 12px; margin-bottom: 12px; }}
     .density-compact .task-checkbox {{ width: 22px; height: 22px; font-size: 14px; border-radius: 5px; margin-top: 2px; }}
 

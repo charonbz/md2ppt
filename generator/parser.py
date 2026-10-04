@@ -217,7 +217,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
                 first_non_blank_idx + 1 < len(remaining_lines)
                 and remaining_lines[first_non_blank_idx + 1].strip().startswith(": ")
             )
-            if not has_definition_on_next and not first_s.startswith(("- ", "* ", "• ", ">", "```", ": ", "|", "![")) and (index == 1 or len(first_s) < 55):
+            if not has_definition_on_next and not first_s.startswith(("#", "- ", "* ", "• ", ">", "```", ": ", "|", "![")) and (index == 1 or len(first_s) < 55):
                 candidate = strip_markdown(first_s).rstrip(":")
                 if candidate and not (index > 1 and re.search(r"[.!?]$", candidate) and len(candidate) > 40):
                     header_title = first_s.rstrip(":")

@@ -471,6 +471,36 @@ Previously:
 - Elevates typography from raw ASCII code conventions (`->`) to typographic presentation arrows (`→`) highlighted in the theme's signature accent color.
 - Respects code blocks and inline code literals without unintended mutations.
 
+---
+
+## ADR-020: Typographic Character Midline Vertical Centering for Arrows and Bullets
+
+### Context
+User observed that both arrows and bullet markers were not centered on the text character line:
+> *"bullet meg nyil az miert nem a karaktervonal kozepen van"*
+*(Why aren't bullet and arrow in the middle of character line?)*
+
+Investigation revealed:
+1. **Arrow Baseline Sagging**: `.md-arrow` was `display: inline-block` with default `vertical-align: baseline`. The Unicode arrow glyph (`→`) rests on the font baseline, causing the arrow shaft to sit below the optical midline (x-height / cap-height center) of uppercase and lowercase letters.
+2. **Bullet Sagging**: Bullet markers (`::before`) used hardcoded pixel offsets (`top: 8px`, `top: 10px`, `top: 12px`, and density tier rules with `top: 15px` / `top: 18px`). Because these pixel offsets did not scale with font sizes and line heights, bullets hung noticeably below the first line's visual center.
+3. **Card Heading Parsing Ambiguity**: In `parser.py`, fallback plain slide title extraction did not blacklist `#` prefixes, causing `### Card Heading` on slide 6 to be mistakenly consumed as a standalone slide title.
+
+### Decision
+1. **Arrow Optical Midline Lift (`html_renderer.py`)**:
+   - Added `vertical-align: 0.12em;` to `.md-arrow`. This shifts the arrow shaft upward into the visual character midline across all font sizes.
+2. **Bullet First-Line Midline Flex Alignment (`html_renderer.py`)**:
+   - Replaced fixed pixel `top` offsets with flex centering on the first line:
+     `top: 0; height: 1.5em; display: inline-flex; align-items: center; justify-content: center;`
+   - Added subtle optical adjustments (`transform: translateY(-0.02em)` for editorial en-dash, `-0.05em` for chevron; exact `margin-top: calc(1.5em / 2 - R)` for refined dot).
+   - Removed conflicting legacy `li::before` `top` rules from `.density-spacious`, `.density-balanced`, and `.density-compact`.
+3. **Card Heading Title Disambiguation (`parser.py`)**:
+   - Added `"#"` to excluded prefixes in `first_s.startswith(...)` during candidate title selection, ensuring card headings (`### `) are preserved as card components.
+
+### Rationale
+- Guarantees visual harmony: arrows and bullet markers sit on the horizontal axis of text.
+- Multi-line wrapped bullet items remain anchored to the first line's midline.
+- Maintains Tri-Format parity across HTML and vector PDF.
+
 
 
 

@@ -86,7 +86,7 @@ slideshowGenerator/
   - **Standard Markdown H1 Mode**: If a document contains neither `---` nor `# Slide`, top-level `# Heading` (H1) tags delimit slides.
   - **Fenced Code Safety**: Fenced code blocks (```` ```python ... ``` ````) track state so internal `#` code comments are never misidentified as slide boundaries.
 - **Title Extraction & Sanitization (`markdown_utils.strip_markdown`)**:
-  - Automatically identifies titles from `# `, `## `, bold markers `**Title**`, or leading terms.
+  - Automatically identifies titles from `# `, `## `, bold markers `**Title**`, or leading terms (excluding structural prefixes `#`, `- `, `* `, `• `, `>`, ` ``` `, `: `, `|`, `![` to protect card headings and content blocks).
   - Sanitizes formatting markers so PowerPoint headers and HTML titles display clean plain text without raw asterisks or hashes.
 - **In-Slide Markdown Structures**:
   - **Definition Lists**: Pandoc/PHP Markdown Extra format (`Term\n: Definition line`) parsed directly into visual `CardItem` blocks.
@@ -171,6 +171,8 @@ Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for 
   - `editorial`: Literary typography en-dash (`–`) in accent color.
   - `refined`: Centered geometric round dot (`•`) in accent color.
   - Card bullet lines (Markdown lines starting with `- `, `* `, `• `) are automatically structured into `.card-bullets` lists with density tier scaling, rendered natively in HTML/PDF and with colored runs in PowerPoint.
+  - **Optical Midline Centering**: Bullets are vertically centered along the character line of the first text row using flex alignment (`display: inline-flex; align-items: center; justify-content: center; height: 1.5em; top: 0;`) with optical transforms (`translateY(-0.02em)` / `-0.05em`), eliminating rigid pixel offsets that caused sagging.
+  - **Arrow Optical Midline Lift**: `.md-arrow` (`→`) uses `vertical-align: 0.12em;` to lift the arrow shaft directly into the optical midline of adjacent lowercase and uppercase characters.
 
 - **AI Theme Generation (`theme_generator.py`)**: When `GEMINI_API_KEY` is present, queries Gemini; otherwise, an algorithmic palette synthesizer analyzes keywords (e.g. "dark", "sötét", "green", "zöld", "nordic", "cyberpunk") to immediately produce a valid theme JSON with `"archetype": "cards"`.
 
