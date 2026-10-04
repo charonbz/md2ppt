@@ -264,4 +264,34 @@ Previous baseline font sizes on the 1600×900 canvas (18px–22px body, 15px car
 - Reinforces the presentation philosophy that slides are high-impact visual anchors rather than dense reading matter.
 - Fully synchronized across HTML5, PowerPoint OpenXML, and headless Chromium PDF exports.
 
+---
+
+## ADR-013: Zero-Dependency Background Watcher for Live Rebuilds on Edit
+
+### Context
+When testing and developing presentations via the built-in web server (`--serve`), users iterate frequently by editing `slides.md` or changing audio/image assets. Previously, the CLI built the presentation once and launched a static HTTP server. Edits in the source directory were not detected, requiring users to terminate the server (`Ctrl + C`), re-run the CLI command, and reload the browser. The user requested:
+> *"szeretnem ha server eszlelne a modositasokat a forrasfileban. ujrageneralna a hasznalt kapcsolokkal es egy bongeszo refresh mar az ujat mutatna"*
+*(I would like the server to detect modifications in the source file, regenerate with the used flags, and a browser refresh would show the new version.)*
+
+### Decision
+1. **Zero-Dependency Polling Watcher (`watch_and_rebuild`)**:
+   - Implemented a lightweight daemon background thread in `generator/cli.py` using strictly Python standard library components (`threading`, `time`, `pathlib.Path.stat`, `os.walk`).
+   - Collects a filesystem fingerprint (`Path -> st_mtime`) tracking `slides.md`, audio files, images, and the applied theme JSON.
+   - Strictly ignores generated output files in `dist/` and hidden paths to prevent recursive rebuild loops.
+2. **Debounce Buffer & Safe Rebuilding**:
+   - Applies a 300ms debounce buffer upon detecting file timestamp changes to accommodate multi-file editor flushes or rapid successive typing saves.
+   - Automatically preserves and reapplies all original CLI flags (`--theme`, `--archetype`, `--format`).
+   - Catches syntax/parser exceptions during rebuilds without terminating the server, allowing authors to fix mistakes and re-save safely.
+3. **CLI Integration**:
+   - Watching is active by default whenever `--serve` is used, providing immediate live feedback for web previews.
+   - Added `--watch` to allow running the watcher in standalone mode without a web server (e.g., auto-rebuilding PPTX/PDF on file saves).
+   - Added `--no-watch` flag to explicitly disable the background watcher when running `--serve` in static/read-only mode.
+4. **Cache Control**:
+   - Left untouched per user explicit instruction (`"cache controlt hagyjuk egyelore"`), retaining standard `SimpleHTTPRequestHandler` caching behaviors.
+
+### Rationale
+- Dramatically accelerates presentation development: authoring in Markdown is reflected in the web presentation with a single browser refresh (`F5`).
+- Eliminates the need for external package dependencies (such as `watchdog`), preserving the platform's zero-dependency philosophy.
+
+
 

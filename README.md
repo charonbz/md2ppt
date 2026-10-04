@@ -21,8 +21,11 @@ The generator automatically manages its Python virtual environment (`.venv`), so
 # Generate only specific formats (e.g., PPTX and PDF only):
 ./run.py slideshow_1 --format pptx,pdf
 
-# View the generated presentation with the built-in web server:
+# View the presentation with the built-in server (auto-rebuilds on edits to slides.md):
 ./run.py slideshow_1 --serve 8080
+
+# Or watch and auto-rebuild in the background without launching a web server:
+./run.py slideshow_1 --watch
 ```
 
 The output artifacts are written to the `dist/` subfolder inside the slideshow directory:

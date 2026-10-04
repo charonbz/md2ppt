@@ -194,6 +194,13 @@ To prevent sparse slides from having tiny fonts while ensuring content-heavy sli
   ```
 - Produces clean, vector-rendered, 16:9 widescreen PDF slides.
 
-### 4.7. Reusable TCP Web Server (`generator/cli.py`)
-- Built-in `--serve` command launches a local HTTP server for testing.
+### 4.7. Reusable TCP Web Server & Source Watcher (`generator/cli.py`)
 - **Instant Port Reuse**: Implements `ReusableTCPServer` with `SO_REUSEADDR` and `SO_REUSEPORT`, ensuring that on `Ctrl + C`, the socket descriptor is immediately closed without lingering in Linux `TIME_WAIT`.
+- **Zero-Dependency Background Watcher (`watch_and_rebuild`)**:
+  - Automatically runs when `--serve` is active (or standalone via `--watch`). Can be disabled via `--no-watch`.
+  - Built strictly using Python's standard library (`threading`, `pathlib.Path.stat`, `time`, `os.walk`) without requiring external packages like `watchdog`.
+  - Tracks filesystem modification times (`st_mtime`) for `slides.md`, audio files, images, and the applied theme JSON (while strictly ignoring generated files in `dist/`).
+  - **Debounced Rebuilds**: Features a 300ms debounce buffer to handle multi-file editor flushes or rapid successive saves smoothly.
+  - Automatically re-executes the build pipeline with the exact flags originally provided (`--theme`, `--archetype`, `--format`).
+  - Catches build exceptions gracefully so partial/invalid editor saves do not crash the running development server.
+  - Allows instant previewing on browser refresh (`F5`) without restarting the server.
