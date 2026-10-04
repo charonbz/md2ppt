@@ -293,5 +293,36 @@ When testing and developing presentations via the built-in web server (`--serve`
 - Dramatically accelerates presentation development: authoring in Markdown is reflected in the web presentation with a single browser refresh (`F5`).
 - Eliminates the need for external package dependencies (such as `watchdog`), preserving the platform's zero-dependency philosophy.
 
+---
+
+## ADR-014: First-Class Line Break Support in Markdown and Tri-Format Renderers
+
+### Context
+User reported that line breaks within slide content (such as multi-line card descriptions, indented sub-bullets, or explicit `<br>` tags) rendered as literal `<br>` text on the slides rather than creating actual line breaks:
+> *"a sortoresek valodi sortoresek legyenek, <br> jelenik meg a slideokban helyette most"*
+*(Line breaks should be real line breaks, <br> appears in the slides instead right now)*
+
+Investigation revealed:
+1. `generator/parser.py` joined multi-line body lines, definition lines, and sub-bullets with `"<br/>".join(...)`.
+2. When passed through `render_markdown_html()`, `html.escape()` turned `"<br/>"` into `&lt;br/&gt;`, causing web browsers to display `<br/>` as raw visible text.
+3. In `pptx_renderer.py`, `_add_formatted_runs()` treated `"<br/>"` as literal run text, printing raw `<br/>` into PowerPoint shape text frames.
+
+### Decision
+1. **AST Representation via Standard Newlines (`\n`)**:
+   - `generator/parser.py` joins multi-line card descriptions and definition items using standard `\n` instead of `"<br/>"`.
+2. **HTML Rendering (`render_markdown_html`)**:
+   - Extended `INLINE_TOKEN_RE` to match explicit `<br\s*/?>` HTML tags.
+   - Generates unescaped `<br/>` tags for both matched `<br>` tokens and escaped newlines (`\n` -> `<br/>`).
+3. **PowerPoint Rendering (`pptx_renderer.py`)**:
+   - Extended `parse_markdown_runs()` with `TextRun(text="", is_break=True)` emitted on newlines or `<br>` tags.
+   - `_add_formatted_runs()` intercepts `is_break` and appends native DrawingML `<a:br/>` elements (DrawingML soft break / Shift+Enter).
+4. **Title Sanitization (`strip_markdown`)**:
+   - Strips `<br>` tags to clean spaces to prevent raw HTML in slide header titles.
+
+### Rationale
+- Restores natural, expected line break formatting across all three first-class presentation formats (Web, PowerPoint, and PDF).
+- Users can naturally format card descriptions across multiple lines in Markdown without raw HTML tags leaking onto the presentation.
+
+
 
 

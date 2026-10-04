@@ -2,19 +2,30 @@
 
 ---
 
-## matematikai ismeretek
+# Matematikai ismeretek
+
 ### Mennyiség (Quantity):
-számolás, mértékegységek, arányok, százalékszámítás és a számok nagysá-gának relatív érzékelése a mindennapokban;
+- számolás
+- mértékegységek
+- arányok
+- százalékszámítás
+- számok nagyságának érzékelése
+
 ### Változás és összefüggések (Change and relationships):
-függvények, algebrai kifejezések, modellezés és változási folyamatok;
+- függvények
+- algebrai kifejezések
+- modellezés
+- változási folyamatok;
+
 ### Tér és alakzat (Space and shape):
 geometriai tulajdonságok, térbeli tájékozódás, térképek, formák és mintázatok felismerése;
+
 ### Adat és bizonytalanság (Uncertainty and data):
 statisztika, valószínűségszámítás, grafikonok elem-zése, adatokból történő következtetések és a véletlen szerepe.
 
 ---
 
-## matematikai folyamatok és gondolkodás dimenziója
+# Matematikai folyamatok és gondolkodás
 
 ### Matematizálás (Formulating):
 a hétköznapi, nyelvi formában megadott probléma lefordítása

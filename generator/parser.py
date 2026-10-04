@@ -508,7 +508,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
             while i < n and lines[i].strip() and not lines[i].strip().startswith(("### ", "## ", "# ", "---", ">", "```")) and not (strip_markdown(lines[i].strip()).endswith(":") and len(lines[i].strip()) < 40):
                 body_lines.append(lines[i].strip())
                 i += 1
-            cards.append(CardItem(title=card_title, description="<br/>".join(body_lines)))
+            cards.append(CardItem(title=card_title, description="\n".join(body_lines)))
             continue
 
         # 8. Definition List Pattern:
@@ -521,7 +521,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
             while i < n and lines[i].strip().startswith(": "):
                 def_lines.append(lines[i].strip()[2:].strip())
                 i += 1
-            cards.append(CardItem(title=term, description="<br/>".join(def_lines)))
+            cards.append(CardItem(title=term, description="\n".join(def_lines)))
             continue
 
         # 9. Bullet items (standard bullets, task lists, cards with colon, or indented sub-properties)
@@ -551,7 +551,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
             if sub_lines:
                 # Multi-line bullet with sub-properties -> CardItem
                 card_title = strip_markdown(bullet_first_line).rstrip(":")
-                card_desc = "<br/>".join(sub_lines)
+                card_desc = "\n".join(sub_lines)
                 cards.append(CardItem(title=card_title, description=card_desc))
             else:
                 # Single-line bullet: check if formatted as Title: Description
@@ -588,7 +588,7 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
                     while i < n and lines[i].strip() and not lines[i].strip().endswith(":") and not strip_markdown(lines[i].strip()).endswith(":") and not lines[i].strip().startswith(("#", "---", "###", "- ", "* ", "• ", "![", "<img", "|")):
                         desc_lines.append(lines[i].strip())
                         i += 1
-                    cards.append(CardItem(title=term, description="<br/>".join(desc_lines)))
+                    cards.append(CardItem(title=term, description="\n".join(desc_lines)))
                     continue
 
         # 12. Links and Sources list entries (e.g. URLs or lines starting with Források:)

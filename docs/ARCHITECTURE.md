@@ -95,6 +95,7 @@ slideshowGenerator/
   - **Blockquotes (`> `)**: Rendered as prominent definition / quote cards.
   - **Fenced Code Blocks**: Highlighted monospace dark code container in PPTX and HTML.
   - **Lists & Auto-Linking**: Bullet lists, numbered lists, and raw URL auto-linking.
+  - **Multi-Line & Line Break Handling**: Multi-line card descriptions and definition entries preserve internal newlines (`\n`) in the AST. In HTML, both `\n` and explicit `<br>` / `<br/>` render as unescaped `<br/>` elements; in PPTX, they are serialized to native DrawingML `<a:br/>` soft breaks.
 - **Dynamic Deck Branding**:
   - Category lead tags and title pill badges dynamically display the presentation title (`PresentationData.title`) instead of hardcoded demo labels.
 - **Metadata Extraction**:

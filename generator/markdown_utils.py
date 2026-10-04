@@ -16,6 +16,7 @@ class TextRun:
     is_sup: bool = False
     is_link: bool = False
     link_url: Optional[str] = None
+    is_break: bool = False
 
     def __iter__(self):
         # Backward compatibility tuple unpacking: chunk, is_bold, is_italic, is_code
@@ -26,6 +27,7 @@ class TextRun:
 INLINE_TOKEN_RE = re.compile(
     r"(?P<link>\[(?P<link_text>[^\]]+)\]\((?P<link_url>[^)]+)\))|"
     r"(?P<raw_url>https?://[^\s<>'\"`]+)|"
+    r"(?P<br><br\s*/?>)|"
     r"(?P<strike>~~(?P<strike_text>.+?)~~)|"
     r"(?P<highlight>==(?P<highlight_text>.+?)==)|"
     r"(?P<sup_caret>\^(?P<sup_text>[^^]+)\^)|"
@@ -34,7 +36,8 @@ INLINE_TOKEN_RE = re.compile(
     r"(?P<bold_under>__(?P<bold_under_text>.+?)__)|"
     r"(?P<code_tick>`(?P<code_text>[^`]+)`)|"
     r"(?P<italic_star>(?<!\*)\*(?P<italic_star_text>[^*]+?)\*(?!\*))|"
-    r"(?P<italic_under>(?<!_)_(?P<italic_under_text>[^_]+?)_(?!_))"
+    r"(?P<italic_under>(?<!_)_(?P<italic_under_text>[^_]+?)_(?!_))",
+    re.IGNORECASE,
 )
 
 
@@ -44,6 +47,8 @@ def strip_markdown(text: str) -> str:
         return ""
     # Strip links [text](url) -> text
     cleaned = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    # Strip <br> or <br/> tags to spaces
+    cleaned = re.sub(r"(?i)<br\s*/?>", " ", cleaned)
     # Strip strikethrough ~~text~~
     cleaned = re.sub(r"~~(.*?)~~", r"\1", cleaned)
     # Strip highlight ==text==
@@ -63,7 +68,7 @@ def strip_markdown(text: str) -> str:
 
 
 def render_markdown_html(text: str) -> str:
-    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs) to safe HTML."""
+    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs, <br>) to safe HTML."""
     if not text:
         return ""
 
@@ -73,10 +78,12 @@ def render_markdown_html(text: str) -> str:
     for match in INLINE_TOKEN_RE.finditer(text):
         start, end = match.span()
         if start > pos:
-            chunk = html.escape(text[pos:start]).replace("\n", "<br/>")
+            chunk = html.escape(text[pos:start]).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br/>")
             parts.append(chunk)
 
-        if match.group("link"):
+        if match.group("br"):
+            parts.append("<br/>")
+        elif match.group("link"):
             link_text = html.escape(match.group("link_text"))
             link_url = html.escape(match.group("link_url"))
             parts.append(f'<a href="{link_url}" target="_blank" rel="noopener">{link_text}</a>')
@@ -114,7 +121,7 @@ def render_markdown_html(text: str) -> str:
         pos = end
 
     if pos < len(text):
-        chunk = html.escape(text[pos:]).replace("\n", "<br/>")
+        chunk = html.escape(text[pos:]).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br/>")
         parts.append(chunk)
 
     return "".join(parts)
@@ -131,40 +138,51 @@ def parse_markdown_runs(text: str) -> List[TextRun]:
     pos = 0
     runs: List[TextRun] = []
 
+    def _append_text_with_newlines(raw: str, **kwargs):
+        normalized = raw.replace("\r\n", "\n").replace("\r", "\n")
+        lines = normalized.split("\n")
+        for idx, line in enumerate(lines):
+            if idx > 0:
+                runs.append(TextRun(text="", is_break=True))
+            if line:
+                runs.append(TextRun(text=line, **kwargs))
+
     for match in INLINE_TOKEN_RE.finditer(text):
         start, end = match.span()
         if start > pos:
-            runs.append(TextRun(text=text[pos:start]))
+            _append_text_with_newlines(text[pos:start])
 
-        if match.group("link"):
+        if match.group("br"):
+            runs.append(TextRun(text="", is_break=True))
+        elif match.group("link"):
             link_text = match.group("link_text")
             link_url = match.group("link_url")
-            runs.append(TextRun(text=f"{link_text} ({link_url})", is_link=True, is_italic=True, link_url=link_url))
+            _append_text_with_newlines(f"{link_text} ({link_url})", is_link=True, is_italic=True, link_url=link_url)
         elif match.group("raw_url"):
             url = match.group("raw_url")
-            runs.append(TextRun(text=url, is_link=True, is_italic=True, link_url=url))
+            _append_text_with_newlines(url, is_link=True, is_italic=True, link_url=url)
         elif match.group("strike"):
-            runs.append(TextRun(text=match.group("strike_text"), is_strike=True))
+            _append_text_with_newlines(match.group("strike_text"), is_strike=True)
         elif match.group("highlight"):
-            runs.append(TextRun(text=match.group("highlight_text"), is_highlight=True, is_bold=True))
+            _append_text_with_newlines(match.group("highlight_text"), is_highlight=True, is_bold=True)
         elif match.group("sup_caret"):
-            runs.append(TextRun(text=match.group("sup_text"), is_sup=True))
+            _append_text_with_newlines(match.group("sup_text"), is_sup=True)
         elif match.group("sub_tilde"):
-            runs.append(TextRun(text=match.group("sub_text"), is_sub=True))
+            _append_text_with_newlines(match.group("sub_text"), is_sub=True)
         elif match.group("bold_star"):
-            runs.append(TextRun(text=match.group("bold_star_text"), is_bold=True))
+            _append_text_with_newlines(match.group("bold_star_text"), is_bold=True)
         elif match.group("bold_under"):
-            runs.append(TextRun(text=match.group("bold_under_text"), is_bold=True))
+            _append_text_with_newlines(match.group("bold_under_text"), is_bold=True)
         elif match.group("code_tick"):
-            runs.append(TextRun(text=match.group("code_text"), is_code=True))
+            _append_text_with_newlines(match.group("code_text"), is_code=True)
         elif match.group("italic_star"):
-            runs.append(TextRun(text=match.group("italic_star_text"), is_italic=True))
+            _append_text_with_newlines(match.group("italic_star_text"), is_italic=True)
         elif match.group("italic_under"):
-            runs.append(TextRun(text=match.group("italic_under_text"), is_italic=True))
+            _append_text_with_newlines(match.group("italic_under_text"), is_italic=True)
 
         pos = end
 
     if pos < len(text):
-        runs.append(TextRun(text=text[pos:]))
+        _append_text_with_newlines(text[pos:])
 
     return runs

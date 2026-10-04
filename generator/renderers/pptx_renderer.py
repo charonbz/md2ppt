@@ -35,7 +35,19 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
         return
 
     for item in runs_data:
+        if getattr(item, "is_break", False):
+            try:
+                br = parse_xml(f'<a:br {nsdecls("a")}/>')
+                paragraph._p.append(br)
+            except Exception:
+                run = paragraph.add_run()
+                run.text = "\n"
+            continue
+
         chunk_text = item.text
+        if not chunk_text:
+            continue
+
         is_bold = item.is_bold
         is_italic = item.is_italic
         is_code = item.is_code
