@@ -544,6 +544,14 @@ def _build_html(pres: PresentationData, theme: ThemeConfig, audio_assets: Dict[i
       line-height: 0;
     }}
 
+    .md-arrow {{
+      color: var(--accent);
+      font-style: normal;
+      font-weight: 700;
+      display: inline-block;
+      padding: 0 0.08em;
+    }}
+
     /* Table Layout */
     .slide-table-container {{
       width: 100%;

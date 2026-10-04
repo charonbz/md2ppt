@@ -440,6 +440,37 @@ Previously:
 - Provides cohesive, publication-quality bullet styling across all presentations.
 - Default `chevron` gives high visual energy and reading momentum, while `editorial` provides dignified literary quietness and `refined` offers classical geometric order.
 
+---
+
+## ADR-019: Automatic Arrow Replacement (`->` to `→`) with Theme Color Styling
+
+### Context
+Slide titles, card titles, bullet lists, and paragraphs frequently use `->` as transition indicators (e.g. `# Tárgyi tudás -> Kompetencia *(fejtudás -> kéztudás)*`).
+The user requested:
+> *"a -> karaktereket nyilra cserelje, ismet commit (nyil az temaszin)"*
+*(replace `->` characters with an arrow, arrow in theme color)*
+
+Previously:
+- `->` was rendered as raw ASCII characters (`-` followed by `>`).
+- Slide titles stripped inline formatting (such as `*italic*` or `_italic_`), flattening rich titles into plain text.
+
+### Decision
+1. **Preserve Inline Formatting in Slide Titles (`generator/parser.py`)**:
+   - Updated heading regex parsing to preserve inline markdown (italic, bold, code, arrows) in `slide.title`, paralleling the earlier card title enhancement (ADR-017).
+2. **Inline Arrow Tokenization & Recursive Markdown (`generator/markdown_utils.py`)**:
+   - Added `(?P<arrow>(?<![<!-])(?:-->|->)|→)` to `INLINE_TOKEN_RE`.
+   - Enabled recursive inline markdown parsing inside formatting tokens (`*italic*`, `**bold**`, `~~strike~~`, `==highlight==`, `^sup^`, `~sub~`), allowing arrows inside italic parentheticals (e.g. `*(fejtudás -> kéztudás)*`) to be recognized and styled appropriately.
+   - Code spans (`` `code` ``) and code blocks remain completely unaffected.
+   - `strip_markdown()` converts `->` and `-->` to the clean Unicode character `→` for plain text outputs and window titles.
+3. **Tri-Format Parity**:
+   - **HTML (`html_renderer.py`)**: Renders `<span class="md-arrow">→</span>` with CSS `color: var(--accent); font-style: normal; font-weight: 700; display: inline-block; padding: 0 0.08em;`.
+   - **PowerPoint (`pptx_renderer.py`)**: `_add_formatted_runs()` checks `item.is_arrow` and generates native PowerPoint runs with `font.color.rgb = accent_color` and `font.bold = True`. All slide renderers pass `accent_color=accent_rgb`.
+   - **PDF (`pdf_renderer.py`)**: Inherits HTML styling directly with pixel-perfect accent-colored vector arrows.
+
+### Rationale
+- Elevates typography from raw ASCII code conventions (`->`) to typographic presentation arrows (`→`) highlighted in the theme's signature accent color.
+- Respects code blocks and inline code literals without unintended mutations.
+
 
 
 

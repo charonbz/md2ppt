@@ -27,7 +27,7 @@ def _get_font_name(theme: ThemeConfig) -> str:
     return "Calibri"
 
 
-def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: Pt, default_color: RGBColor, is_title: bool = False):
+def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: Pt, default_color: RGBColor, is_title: bool = False, accent_color: Optional[RGBColor] = None):
     """Parses inline Markdown and appends formatted TextRun objects to a PPTX paragraph."""
     runs_data = parse_markdown_runs(text)
     if not runs_data:
@@ -56,6 +56,7 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
         is_highlight = getattr(item, "is_highlight", False)
         is_sub = getattr(item, "is_sub", False)
         is_sup = getattr(item, "is_sup", False)
+        is_arrow = getattr(item, "is_arrow", False)
 
         run = paragraph.add_run()
         run.text = chunk_text
@@ -65,8 +66,13 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
         else:
             run.font.size = default_size
 
-        run.font.color.rgb = default_color
-        run.font.bold = is_bold or is_title
+        if is_arrow:
+            run.font.color.rgb = accent_color if accent_color is not None else default_color
+            run.font.bold = True
+        else:
+            run.font.color.rgb = default_color
+            run.font.bold = is_bold or is_title
+
         run.font.italic = is_italic
 
         rPr = run._r.get_or_add_rPr()
@@ -94,7 +100,7 @@ def _render_card_description_pptx(desc_box, desc_text: str, font_name: str, card
     if not has_bullet:
         dp = tf.paragraphs[0]
         dp.line_spacing = 1.3
-        _add_formatted_runs(dp, desc_text, font_name, card_desc_size, secondary_rgb)
+        _add_formatted_runs(dp, desc_text, font_name, card_desc_size, secondary_rgb, accent_color=accent_rgb)
         return
 
     bullet_marker = "› " if bullet_style == BulletStyle.CHEVRON else ("– " if bullet_style == BulletStyle.EDITORIAL else "• ")
@@ -116,9 +122,9 @@ def _render_card_description_pptx(desc_box, desc_text: str, font_name: str, card
             bullet_run.font.size = card_desc_size
             bullet_run.font.bold = True
             bullet_run.font.color.rgb = accent_rgb
-            _add_formatted_runs(p, m.group(1).strip(), font_name, card_desc_size, secondary_rgb)
+            _add_formatted_runs(p, m.group(1).strip(), font_name, card_desc_size, secondary_rgb, accent_color=accent_rgb)
         else:
-            _add_formatted_runs(p, s, font_name, card_desc_size, secondary_rgb)
+            _add_formatted_runs(p, s, font_name, card_desc_size, secondary_rgb, accent_color=accent_rgb)
 
 
 def _add_picture_fit(slide, img_path: Path, left, top, max_width, max_height):
@@ -344,7 +350,7 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
     tf = title_box.text_frame
     tf.word_wrap = True
     tp = tf.paragraphs[0]
-    _add_formatted_runs(tp, slide_data.title, font_name, title_size, primary_rgb, is_title=True)
+    _add_formatted_runs(tp, slide_data.title, font_name, title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
     # 3. Accent decorative line
     if arch != ArchetypeType.MINIMAL:
@@ -358,7 +364,7 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         author_text = slide_data.author or slide_data.subtitle
         author_box = slide.shapes.add_textbox(Inches(1.0), Inches(5.2), Inches(10.0), Inches(0.8))
         ap = author_box.text_frame.paragraphs[0]
-        _add_formatted_runs(ap, author_text, font_name, author_size, secondary_rgb)
+        _add_formatted_runs(ap, author_text, font_name, author_size, secondary_rgb, accent_color=accent_rgb)
 
 
 def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConfig,
@@ -391,7 +397,7 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf.word_wrap = True
         p = tf.paragraphs[0]
         p.line_spacing = def_spacing
-        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb)
+        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb, accent_color=accent_rgb)
 
     elif arch == ArchetypeType.NEUBRUTALISM:
         # Black hard shadow offset rectangle
@@ -417,7 +423,7 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf.word_wrap = True
         p = tf.paragraphs[0]
         p.line_spacing = def_spacing
-        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb)
+        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb, accent_color=accent_rgb)
 
     elif arch == ArchetypeType.MINIMAL:
         # Transparent card, bold left vertical bar
@@ -431,7 +437,7 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf.word_wrap = True
         p = tf.paragraphs[0]
         p.line_spacing = def_spacing
-        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb)
+        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb, accent_color=accent_rgb)
 
     elif arch == ArchetypeType.CORPORATE:
         # Sharp rectangle + top accent banner strip
@@ -451,7 +457,7 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf.word_wrap = True
         p = tf.paragraphs[0]
         p.line_spacing = def_spacing
-        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb)
+        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb, accent_color=accent_rgb)
 
     else:
         # Terminal & Cards (modern cards)
@@ -472,7 +478,7 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
         tf.word_wrap = True
         p = tf.paragraphs[0]
         p.line_spacing = def_spacing
-        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb)
+        _add_formatted_runs(p, first_para, font_name, def_font_size, primary_rgb, accent_color=accent_rgb)
 
 
 def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
@@ -497,7 +503,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         itf = intro_box.text_frame
         itf.word_wrap = True
         ip = itf.paragraphs[0]
-        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, intro_size, secondary_rgb)
+        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, intro_size, secondary_rgb, accent_color=accent_rgb)
 
     num_cards = max(1, min(4, len(slide_data.cards)))
     if num_cards == 1:
@@ -537,7 +543,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True)
+            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
             # Desc
             desc_box = slide.shapes.add_textbox(left + Inches(0.2), top + Inches(1.8), card_w - Inches(0.3), Inches(2.2))
@@ -580,7 +586,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True)
+            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
             _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
@@ -599,7 +605,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True)
+            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
             desc_box = slide.shapes.add_textbox(left, top + Inches(1.9), card_w, Inches(2.2))
             _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
@@ -633,7 +639,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t = title_box.text_frame
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True)
+            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.35), top + Inches(2.1), card_w - Inches(0.7), Inches(1.9))
             _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
@@ -664,7 +670,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf_t.word_wrap = True
             tp = tf_t.paragraphs[0]
             title_prefix = "> " if arch == ArchetypeType.TERMINAL else ""
-            _add_formatted_runs(tp, f"{title_prefix}{c.title}", font_name, card_title_size, primary_rgb, is_title=True)
+            _add_formatted_runs(tp, f"{title_prefix}{c.title}", font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
             desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
             _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
@@ -732,7 +738,7 @@ def _render_pptx_table_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         tf_i = intro_box.text_frame
         tf_i.word_wrap = True
         ip = tf_i.paragraphs[0]
-        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, intro_size, secondary_rgb)
+        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, intro_size, secondary_rgb, accent_color=accent_rgb)
         top = Inches(2.8)
 
     table_height = min(Inches(0.55 * num_rows), Inches(4.3))
@@ -766,7 +772,7 @@ def _render_pptx_table_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         tf = cell.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
-        _add_formatted_runs(p, h_text, font_name, header_size, h_color, is_title=True)
+        _add_formatted_runs(p, h_text, font_name, header_size, h_color, is_title=True, accent_color=accent_rgb)
         col_align = table_data.alignments[c_idx] if c_idx < len(table_data.alignments) else "left"
         p.alignment = align_map.get(col_align, PP_ALIGN.LEFT)
 
@@ -790,7 +796,7 @@ def _render_pptx_table_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             tf = cell.text_frame
             tf.word_wrap = True
             p = tf.paragraphs[0]
-            _add_formatted_runs(p, cell_text, font_name, cell_size, primary_rgb)
+            _add_formatted_runs(p, cell_text, font_name, cell_size, primary_rgb, accent_color=accent_rgb)
             col_align = table_data.alignments[c_idx] if c_idx < len(table_data.alignments) else "left"
             p.alignment = align_map.get(col_align, PP_ALIGN.LEFT)
 
@@ -813,7 +819,7 @@ def _render_pptx_image_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         tf_i.word_wrap = True
         ip = tf_i.paragraphs[0]
         ip.alignment = PP_ALIGN.CENTER
-        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, intro_size, secondary_rgb)
+        _add_formatted_runs(ip, slide_data.paragraphs[0], font_name, intro_size, secondary_rgb, accent_color=accent_rgb)
         top = Inches(2.8)
         max_h = Inches(3.9)
 
@@ -825,7 +831,7 @@ def _render_pptx_image_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                 cap_box = slide.shapes.add_textbox(Inches(1.0), Inches(6.8), Inches(11.333), Inches(0.4))
                 cp = cap_box.text_frame.paragraphs[0]
                 cp.alignment = PP_ALIGN.CENTER
-                _add_formatted_runs(cp, img_info.alt, font_name, Pt(12), secondary_rgb)
+                _add_formatted_runs(cp, img_info.alt, font_name, Pt(12), secondary_rgb, accent_color=accent_rgb)
 
 
 def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig,
@@ -851,7 +857,7 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
         p = tf.paragraphs[0] if first else tf.add_paragraph()
         first = False
         p.space_after = para_space
-        _add_formatted_runs(p, p_text, font_name, body_size, primary_rgb)
+        _add_formatted_runs(p, p_text, font_name, body_size, primary_rgb, accent_color=accent_rgb)
 
     for item_text in slide_data.list_items:
         p = tf.paragraphs[0] if first else tf.add_paragraph()
@@ -875,7 +881,7 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
         bullet_run.font.name = font_name
         bullet_run.font.size = body_size
         bullet_run.font.bold = True
-        _add_formatted_runs(p, clean_item, font_name, body_size, primary_rgb)
+        _add_formatted_runs(p, clean_item, font_name, body_size, primary_rgb, accent_color=accent_rgb)
 
     if has_image:
         img_info = slide_data.images[0]
@@ -884,7 +890,7 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
             cap_box = slide.shapes.add_textbox(Inches(7.4), Inches(6.6), Inches(4.9), Inches(0.4))
             cp = cap_box.text_frame.paragraphs[0]
             cp.alignment = PP_ALIGN.CENTER
-            _add_formatted_runs(cp, img_info.alt, font_name, Pt(11), secondary_rgb)
+            _add_formatted_runs(cp, img_info.alt, font_name, Pt(11), secondary_rgb, accent_color=accent_rgb)
 
 
 def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme: ThemeConfig, density: DensityTier = DensityTier.BALANCED):
@@ -908,7 +914,7 @@ def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme
     tf = title_box.text_frame
     tf.word_wrap = True
     tp = tf.paragraphs[0]
-    _add_formatted_runs(tp, title, font_name, title_size, primary_rgb, is_title=True)
+    _add_formatted_runs(tp, title, font_name, title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
     # Editorial hairline header separator
     if arch == ArchetypeType.EDITORIAL:

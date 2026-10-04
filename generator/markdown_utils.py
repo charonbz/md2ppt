@@ -17,6 +17,7 @@ class TextRun:
     is_link: bool = False
     link_url: Optional[str] = None
     is_break: bool = False
+    is_arrow: bool = False
 
     def __iter__(self):
         # Backward compatibility tuple unpacking: chunk, is_bold, is_italic, is_code
@@ -25,8 +26,10 @@ class TextRun:
 
 # Inline Markdown token regex with full extended syntax
 INLINE_TOKEN_RE = re.compile(
+    r"(?P<comment><!--.*?-->)|"
     r"(?P<link>\[(?P<link_text>[^\]]+)\]\((?P<link_url>[^)]+)\))|"
     r"(?P<raw_url>https?://[^\s<>'\"`]+)|"
+    r"(?P<code_tick>`(?P<code_text>[^`]+)`)|"
     r"(?P<br><br\s*/?>)|"
     r"(?P<strike>~~(?P<strike_text>.+?)~~)|"
     r"(?P<highlight>==(?P<highlight_text>.+?)==)|"
@@ -34,9 +37,9 @@ INLINE_TOKEN_RE = re.compile(
     r"(?P<sub_tilde>(?<!~)~(?P<sub_text>[^~]+)~(?!~))|"
     r"(?P<bold_star>\*\*(?P<bold_star_text>.+?)\*\*)|"
     r"(?P<bold_under>__(?P<bold_under_text>.+?)__)|"
-    r"(?P<code_tick>`(?P<code_text>[^`]+)`)|"
     r"(?P<italic_star>(?<!\*)\*(?P<italic_star_text>[^*]+?)\*(?!\*))|"
-    r"(?P<italic_under>(?<!_)_(?P<italic_under_text>[^_]+?)_(?!_))",
+    r"(?P<italic_under>(?<!_)_(?P<italic_under_text>[^_]+?)_(?!_))|"
+    r"(?P<arrow>(?<![<!-])(?:-->|->)|→)",
     re.IGNORECASE,
 )
 
@@ -62,13 +65,15 @@ def strip_markdown(text: str) -> str:
     cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
     # Strip leading heading hashes
     cleaned = re.sub(r"^#{1,6}\s*", "", cleaned)
+    # Convert -> or --> to Unicode arrow →
+    cleaned = re.sub(r"(?<![<!-])(?:-->|->)", "→", cleaned)
     # Strip trailing colons or excess whitespace
     cleaned = cleaned.strip()
     return cleaned
 
 
 def render_markdown_html(text: str) -> str:
-    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs, <br>) to safe HTML."""
+    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs, <br>, -> arrows) to safe HTML."""
     if not text:
         return ""
 
@@ -81,41 +86,45 @@ def render_markdown_html(text: str) -> str:
             chunk = html.escape(text[pos:start]).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "<br/>")
             parts.append(chunk)
 
-        if match.group("br"):
+        if match.group("comment"):
+            pass
+        elif match.group("br"):
             parts.append("<br/>")
+        elif match.group("arrow"):
+            parts.append('<span class="md-arrow">→</span>')
+        elif match.group("code_tick"):
+            content = html.escape(match.group("code_text"))
+            parts.append(f"<code>{content}</code>")
         elif match.group("link"):
-            link_text = html.escape(match.group("link_text"))
+            link_text = render_markdown_html(match.group("link_text"))
             link_url = html.escape(match.group("link_url"))
             parts.append(f'<a href="{link_url}" target="_blank" rel="noopener">{link_text}</a>')
         elif match.group("raw_url"):
             url = html.escape(match.group("raw_url"))
             parts.append(f'<a href="{url}" target="_blank" rel="noopener">{url}</a>')
         elif match.group("strike"):
-            content = html.escape(match.group("strike_text"))
+            content = render_markdown_html(match.group("strike_text"))
             parts.append(f'<del class="md-strike">{content}</del>')
         elif match.group("highlight"):
-            content = html.escape(match.group("highlight_text"))
+            content = render_markdown_html(match.group("highlight_text"))
             parts.append(f'<mark class="md-highlight">{content}</mark>')
         elif match.group("sup_caret"):
-            content = html.escape(match.group("sup_text"))
+            content = render_markdown_html(match.group("sup_text"))
             parts.append(f'<sup>{content}</sup>')
         elif match.group("sub_tilde"):
-            content = html.escape(match.group("sub_text"))
+            content = render_markdown_html(match.group("sub_text"))
             parts.append(f'<sub>{content}</sub>')
         elif match.group("bold_star"):
-            content = html.escape(match.group("bold_star_text"))
+            content = render_markdown_html(match.group("bold_star_text"))
             parts.append(f"<strong>{content}</strong>")
         elif match.group("bold_under"):
-            content = html.escape(match.group("bold_under_text"))
+            content = render_markdown_html(match.group("bold_under_text"))
             parts.append(f"<strong>{content}</strong>")
-        elif match.group("code_tick"):
-            content = html.escape(match.group("code_text"))
-            parts.append(f"<code>{content}</code>")
         elif match.group("italic_star"):
-            content = html.escape(match.group("italic_star_text"))
+            content = render_markdown_html(match.group("italic_star_text"))
             parts.append(f"<em>{content}</em>")
         elif match.group("italic_under"):
-            content = html.escape(match.group("italic_under_text"))
+            content = render_markdown_html(match.group("italic_under_text"))
             parts.append(f"<em>{content}</em>")
 
         pos = end
@@ -152,8 +161,14 @@ def parse_markdown_runs(text: str) -> List[TextRun]:
         if start > pos:
             _append_text_with_newlines(text[pos:start])
 
-        if match.group("br"):
+        if match.group("comment"):
+            pass
+        elif match.group("br"):
             runs.append(TextRun(text="", is_break=True))
+        elif match.group("arrow"):
+            runs.append(TextRun(text="→", is_arrow=True))
+        elif match.group("code_tick"):
+            _append_text_with_newlines(match.group("code_text"), is_code=True)
         elif match.group("link"):
             link_text = match.group("link_text")
             link_url = match.group("link_url")
@@ -162,23 +177,38 @@ def parse_markdown_runs(text: str) -> List[TextRun]:
             url = match.group("raw_url")
             _append_text_with_newlines(url, is_link=True, is_italic=True, link_url=url)
         elif match.group("strike"):
-            _append_text_with_newlines(match.group("strike_text"), is_strike=True)
+            for r in parse_markdown_runs(match.group("strike_text")):
+                r.is_strike = True
+                runs.append(r)
         elif match.group("highlight"):
-            _append_text_with_newlines(match.group("highlight_text"), is_highlight=True, is_bold=True)
+            for r in parse_markdown_runs(match.group("highlight_text")):
+                r.is_highlight = True
+                r.is_bold = True
+                runs.append(r)
         elif match.group("sup_caret"):
-            _append_text_with_newlines(match.group("sup_text"), is_sup=True)
+            for r in parse_markdown_runs(match.group("sup_text")):
+                r.is_sup = True
+                runs.append(r)
         elif match.group("sub_tilde"):
-            _append_text_with_newlines(match.group("sub_text"), is_sub=True)
+            for r in parse_markdown_runs(match.group("sub_text")):
+                r.is_sub = True
+                runs.append(r)
         elif match.group("bold_star"):
-            _append_text_with_newlines(match.group("bold_star_text"), is_bold=True)
+            for r in parse_markdown_runs(match.group("bold_star_text")):
+                r.is_bold = True
+                runs.append(r)
         elif match.group("bold_under"):
-            _append_text_with_newlines(match.group("bold_under_text"), is_bold=True)
-        elif match.group("code_tick"):
-            _append_text_with_newlines(match.group("code_text"), is_code=True)
+            for r in parse_markdown_runs(match.group("bold_under_text")):
+                r.is_bold = True
+                runs.append(r)
         elif match.group("italic_star"):
-            _append_text_with_newlines(match.group("italic_star_text"), is_italic=True)
+            for r in parse_markdown_runs(match.group("italic_star_text")):
+                r.is_italic = True
+                runs.append(r)
         elif match.group("italic_under"):
-            _append_text_with_newlines(match.group("italic_under_text"), is_italic=True)
+            for r in parse_markdown_runs(match.group("italic_under_text")):
+                r.is_italic = True
+                runs.append(r)
 
         pos = end
 

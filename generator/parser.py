@@ -180,9 +180,10 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
             continue
         m = re.match(r"^#{1,2}\s+(.*)", s)
         if m:
-            candidate = strip_markdown(m.group(1)).rstrip(":")
+            raw_title = m.group(1).strip().rstrip(":")
+            candidate = strip_markdown(raw_title)
             if candidate and candidate.lower() not in ["title", "slide"]:
-                header_title = candidate
+                header_title = raw_title
                 header_line_idx = i
                 break
         else:
@@ -197,7 +198,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
             if (s.startswith("**") and s.endswith("**")) or (s.startswith("__") and s.endswith("__")):
                 candidate = strip_markdown(s).rstrip(":")
                 if candidate and len(candidate) < 70:
-                    header_title = candidate
+                    header_title = s.rstrip(":")
                     header_line_idx = i
                     break
             break
@@ -219,7 +220,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
             if not has_definition_on_next and not first_s.startswith(("- ", "* ", "• ", ">", "```", ": ", "|", "![")) and (index == 1 or len(first_s) < 55):
                 candidate = strip_markdown(first_s).rstrip(":")
                 if candidate and not (index > 1 and re.search(r"[.!?]$", candidate) and len(candidate) > 40):
-                    header_title = candidate
+                    header_title = first_s.rstrip(":")
                     header_line_idx = first_non_blank_idx
 
     # Content lines with the title line removed
