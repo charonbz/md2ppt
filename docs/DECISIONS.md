@@ -356,6 +356,58 @@ User feedback on presentation navigation and card density highlighted two incons
 - Slide headings remain rock-solid and stable during navigation.
 - Prevents premature downscaling on slides that have ample vertical space, maintaining optimal readability without awkward whitespace.
 
+---
+
+## ADR-016: Title-Scoped Card Numbering Continuation
+
+### Context
+Card numbering (`01`, `02`, `03`...) previously accumulated across all consecutive `CARDS` slides regardless of topic. On presentations with multiple distinct card topics (such as PISA slide 2 "Matematikai ismeretek" followed by slide 3 "Matematikai folyamatok és gondolkodás"), slide 3 started counting at `05, 06, 07, 08` instead of restarting. The user requested:
+> *"a kartyaszamozas csak akkor folytatodjon ha a title megegyezik az elozo slide-al"*
+*(Card numbering should only continue if the title matches the previous slide.)*
+
+### Decision
+1. **Title-Scoped Continuation (`generator/parser.py`)**:
+   - `parse_slides_file` tracks `prev_title`.
+   - `parse_single_slide` resolves `final_title` before card numbering.
+   - Normalizes titles by stripping continuation suffixes (`(folytatás)`, `(continuation)`, `(part X)`).
+   - If normalized titles match, card numbering increments `global_card_counter`.
+   - If titles differ, card numbering resets to 1 for the new slide.
+
+### Rationale
+- Each distinct topic begins cleanly with card index `01`.
+- Multi-slide split topics (e.g. "A mérés tartalmi kategóriái" and "(folytatás)") preserve continuous numbering (`01, 02` -> `03, 04`).
+
+---
+
+## ADR-017: Preservation of Inline Markdown Formatting in Card Titles
+
+### Context
+User feedback highlighted that italic formatting in card titles was ignored:
+> *"kártyák cimeben nem érvényesül az italic"*
+*(Italic formatting is not applied in card titles)*
+
+In `pisa/slides.md`, the card title `### Matematikai érvelés *(Reasoning)*` rendered as plain `Matematikai érvelés (Reasoning)`. The parser called `strip_markdown(...)` when extracting card titles and definition terms, stripping `*` and `_` markup before storing them in `CardItem.title`. While `html_renderer.py` and `pptx_renderer.py` already had native inline Markdown token parsers for card titles, there were no remaining tokens to format.
+
+### Decision
+1. **Preserve Inline Markdown in `CardItem.title` (`generator/parser.py`)**:
+   - Ceased wrapping card title extraction in `strip_markdown(...)` across:
+     - Heading-based cards (`### ` / `## `)
+     - Definition list terms (`Term\n: desc`)
+     - Multi-line indented bullet cards (`- Term:\n  desc`)
+     - Single-line bullet / colon cards (`_try_parse_card_from_bullet`)
+     - Unbulleted key-value cards
+   - Trailing colons (`:`) and hash markers (`#`) continue to be stripped, but inline syntax (`*italic*`, `**bold**`, `_italic_`, `` `code` ``) is preserved.
+2. **Tri-Format Formatting Verification**:
+   - **HTML (`html_renderer.py`)**: `render_markdown_html(card.title)` converts tokens into `<em>` and `<strong>`. Global CSS renders `em { font-style: italic; }` inside `.card-title`.
+   - **PowerPoint (`pptx_renderer.py`)**: `_add_formatted_runs()` parses `parse_markdown_runs()` and sets `run.font.italic = is_italic`, combining with `run.font.bold = is_bold or is_title`.
+   - **PDF (`pdf_renderer.py`)**: Renders directly from HTML, preserving font styling.
+
+### Rationale
+- Authors can freely emphasize, annotate translations, or format secondary terms in card titles without markdown syntax being stripped.
+- Preserves full tri-format visual consistency with minimal, non-invasive code changes.
+
+
+
 
 
 

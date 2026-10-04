@@ -102,7 +102,8 @@ slideshowGenerator/
   - `<!-- audio: filename.m4a -->`: Associates an audio track with the slide.
   - `<!-- notes: ... -->`: Speaker notes.
   - `<!-- type: ... -->`: Manual layout type override (`title`, `cards`, `definition`, `code`, `standard`).
-- **Continuous Numbering**: Sequential card slides maintain a running counter (e.g. `01, 02` on slide 3, continuing to `03, 04` on slide 4).
+- **Title-Scoped Card Numbering**: Card numbering continues (`01, 02` -> `03, 04`) strictly when a slide continues the previous slide's title (e.g., matching title or `(folytatás)` / `(part 2)` suffix). When a slide introduces a new title, card numbering restarts from `01`.
+- **Card Titles Inline Markdown Preservation**: Card titles retain inline Markdown (e.g., `*italic*`, `**bold**`). Titles are rendered via `render_markdown_html()` into `<em>` and `<strong>` tags in HTML/PDF and via `parse_markdown_runs()` into styled PowerPoint runs (`run.font.italic = True`, `run.font.bold = True`).
 
 #### Markdown-to-Slide Element Mapping Reference:
 | Markdown Syntax | AST Element | Slide Layout / Component | Notes & Styling |

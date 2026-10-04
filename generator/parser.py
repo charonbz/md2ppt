@@ -23,11 +23,15 @@ def parse_slides_file(slides_path: Path) -> PresentationData:
     slides: List[SlideData] = []
     pres_title = "Presentation"
     global_card_counter = 1
+    prev_title = ""
 
     for idx, raw_slide in enumerate(raw_slides, start=1):
-        slide, global_card_counter = parse_single_slide(idx, raw_slide, source_dir, global_card_counter)
+        slide, global_card_counter = parse_single_slide(
+            idx, raw_slide, source_dir, global_card_counter, prev_title=prev_title
+        )
         if slide.slide_type == SlideType.TITLE and slide.title:
             pres_title = slide.title
+        prev_title = slide.title
         slides.append(slide)
 
     # Ensure presentation title is well-formed
@@ -122,7 +126,7 @@ def split_into_raw_slides(text: str) -> List[str]:
     return ["\n".join(s) for s in slides_raw if "\n".join(s).strip()]
 
 
-def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_counter: int = 1) -> Tuple[SlideData, int]:
+def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_counter: int = 1, prev_title: str = "") -> Tuple[SlideData, int]:
     # 1. Extract metadata comments
     audio_match = AUDIO_COMMENT_RE.search(raw_text)
     audio_filename = audio_match.group(1).strip() if audio_match else None
@@ -268,18 +272,7 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
             list_items.append(f"**{c.title}**: {c.description}" if c.description else c.title)
         raw_cards = []
 
-    # 6. Continuous card numbering
-    cards = []
-    next_counter = global_card_counter
-    if slide_type == SlideType.CARDS:
-        for c in raw_cards:
-            c.card_index = next_counter
-            cards.append(c)
-            next_counter += 1
-    else:
-        next_counter = 1
-
-    # 7. Title, subtitle, and author resolution
+    # 6. Title, subtitle, and author resolution
     final_title = explicit_title or header_title
     subtitle = ""
     author = extracted_author or ""
@@ -319,12 +312,12 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
                     final_title = "Alapfogalom"
 
             elif slide_type == SlideType.CARDS:
-                if any("mennyiség" in c.title.lower() or "változás" in c.title.lower() for c in cards):
+                if any("mennyiség" in c.title.lower() or "változás" in c.title.lower() for c in raw_cards):
                     final_title = "A mérés tartalmi kategóriái"
-                elif any("tér" in c.title.lower() or "adat" in c.title.lower() for c in cards):
+                elif any("tér" in c.title.lower() or "adat" in c.title.lower() for c in raw_cards):
                     final_title = "A mérés tartalmi kategóriái (folytatás)"
-                elif cards and len(cards) <= 3:
-                    final_title = ", ".join(c.title for c in cards)
+                elif raw_cards and len(raw_cards) <= 3:
+                    final_title = ", ".join(c.title for c in raw_cards)
                 elif paragraphs:
                     final_title = strip_markdown(paragraphs[0]).rstrip(":")
                     paragraphs = paragraphs[1:]
@@ -351,6 +344,22 @@ def parse_single_slide(index: int, raw_text: str, source_dir: Path, global_card_
                         final_title = f"Dia {index}"
                 else:
                     final_title = f"Dia {index}"
+
+    # 7. Card numbering: only continue counter if title matches previous slide
+    # ponytail: card numbering resets to 1 unless title continues previous slide
+    norm_cur = re.sub(r"\s*\((?:folytatás|folyt\.|continuation|cont\.|part\s*\d+|\d+/\d+)\)", "", final_title, flags=re.IGNORECASE).strip().lower()
+    norm_prev = re.sub(r"\s*\((?:folytatás|folyt\.|continuation|cont\.|part\s*\d+|\d+/\d+)\)", "", prev_title, flags=re.IGNORECASE).strip().lower()
+    is_continuation = bool(prev_title and norm_cur and norm_cur == norm_prev)
+
+    cards = []
+    next_counter = global_card_counter if is_continuation else 1
+    if slide_type == SlideType.CARDS:
+        for c in raw_cards:
+            c.card_index = next_counter
+            cards.append(c)
+            next_counter += 1
+    else:
+        next_counter = 1
 
     slide = SlideData(
         index=index,
@@ -502,7 +511,8 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
         # 7. H2/H3 Card or Section Header (### Card Title or ## Section Title)
         if stripped.startswith("### ") or (stripped.startswith("## ") and not stripped.startswith("### ")):
             commit_para()
-            card_title = strip_markdown(stripped.lstrip("#")).rstrip(":")
+            # ponytail: keep inline markdown for card titles
+            card_title = stripped.lstrip("#").strip().rstrip(":").strip()
             i += 1
             body_lines = []
             while i < n and lines[i].strip() and not lines[i].strip().startswith(("### ", "## ", "# ", "---", ">", "```")) and not (strip_markdown(lines[i].strip()).endswith(":") and len(lines[i].strip()) < 40):
@@ -515,7 +525,8 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
         # A term line followed by lines starting with ': '
         if i + 1 < n and lines[i + 1].strip().startswith(": "):
             commit_para()
-            term = strip_markdown(stripped).rstrip(":")
+            # ponytail: keep inline markdown for card titles
+            term = stripped.rstrip(":").strip()
             i += 1
             def_lines = []
             while i < n and lines[i].strip().startswith(": "):
@@ -550,7 +561,8 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
 
             if sub_lines:
                 # Multi-line bullet with sub-properties -> CardItem
-                card_title = strip_markdown(bullet_first_line).rstrip(":")
+                # ponytail: keep inline markdown for card titles
+                card_title = bullet_first_line.rstrip(":").strip()
                 card_desc = "\n".join(sub_lines)
                 cards.append(CardItem(title=card_title, description=card_desc))
             else:
@@ -563,10 +575,11 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
             continue
 
         # 10. Single-line Term: Description card (e.g. 'Összehúzódás: vért pumpál az artériákba')
-        colon_line_match = re.match(r"^([A-ZÁÉÍÓÖŐÚÜŰa-záéíóöőúüű0-9\s_–-]{2,35}):\s+(.+)$", stripped)
+        colon_line_match = re.match(r"^([A-ZÁÉÍÓÖŐÚÜŰa-záéíóöőúüű0-9\s_*–-]{2,35}):\s+(.+)$", stripped)
         if colon_line_match and not stripped.startswith(("- ", "* ", "• ", "http", "https")) and not stripped.lower().startswith(("források:", "forrás:", "megjegyzés:")):
             commit_para()
-            term = strip_markdown(colon_line_match.group(1)).strip()
+            # ponytail: keep inline markdown for card titles
+            term = colon_line_match.group(1).strip()
             desc = colon_line_match.group(2).strip()
             cards.append(CardItem(title=term, description=desc))
             i += 1
@@ -582,7 +595,8 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
                 next_s = lines[next_idx].strip()
                 if not next_s.startswith(("#", "---", "###", "![", "<img", "- ", "* ", "• ", "|")):
                     commit_para()
-                    term = clean_stripped.rstrip(":")
+                    # ponytail: keep inline markdown for card titles
+                    term = stripped.rstrip(":").strip()
                     i = next_idx
                     desc_lines = []
                     while i < n and lines[i].strip() and not lines[i].strip().endswith(":") and not strip_markdown(lines[i].strip()).endswith(":") and not lines[i].strip().startswith(("#", "---", "###", "- ", "* ", "• ", "![", "<img", "|")):
@@ -632,14 +646,16 @@ def _try_parse_card_from_bullet(text: str) -> Optional[CardItem]:
     """Tries to extract a structured card (Title & Description) from a bullet item."""
     colon_idx = text.find(":")
     if colon_idx != -1 and 2 < colon_idx < 60:
-        title = strip_markdown(text[:colon_idx]).strip()
+        # ponytail: keep inline markdown for card titles
+        title = text[:colon_idx].strip()
         desc = text[colon_idx + 1:].strip()
         if desc:
             return CardItem(title=title, description=desc)
 
     dash_match = re.search(r"\s+–\s+|\s+-\s+", text)
     if dash_match and 2 < dash_match.start() < 60:
-        title = strip_markdown(text[:dash_match.start()]).strip()
+        # ponytail: keep inline markdown for card titles
+        title = text[:dash_match.start()].strip()
         desc = text[dash_match.end():].strip()
         if desc:
             return CardItem(title=title, description=desc)

@@ -4,26 +4,26 @@ Készítette: Boncz Zoltán
 
 # Matematikai ismeretek
 
-### Mennyiség (Quantity):
+### Mennyiség *(Quantity)*
 - számolás
 - mértékegységek
 - arányok
 - százalékszámítás
 - számok nagyságának érzékelése
 
-### Változás és összefüggések (Change and relationships):
+### Változás és összefüggések *(Change and relationships)*
 - függvények
 - algebrai kifejezések
 - modellezés
 - változási folyamatok
 
-### Tér és alakzat (Space and shape):
+### Tér és alakzat *(Space and shape)*
 - geometriai tulajdonságok
 - térbeli tájékozódás
 - térképek
 - formák és mintázatok felismerése;
 
-### Adat és bizonytalanság (Uncertainty and data):
+### Adat és bizonytalanság *(Uncertainty and data)*
 - statisztika
 - valószínűségszámítás
 - grafikonok elemzése
@@ -33,35 +33,34 @@ Készítette: Boncz Zoltán
 ---
 
 # Matematikai folyamatok és gondolkodás
-- term: djdd
 
-
----
-
-### Matematizálás (Formulating):
+### Matematizálás *(Formulating)*
 a hétköznapi, nyelvi formában megadott
 probléma lefordítása a matematika nyelvére
 (változók, egyenletek meghatározása).
 
-### Alkalmazás (Employing):
+### Alkalmazás *(Employing)*
 matematikai fogalmak, eljárások, tények és eszközök
 használata a matematikai probléma megoldásához
 (számolás, levezetés).
 
-### Ertelmezés és értékelés (Interpreting & Evaluating):
+### Értelmezés és értékelés *(Interpreting & Evaluating)*
 a kapott matematikai eredmény visszahelyezése a
 valós kontextusba, és annak ellenőrzése,
 hogy a megoldásnak van-e reális értelme.
 
-### Matematikai érvelés (Reasoning):
-Rendszerszintű elem, amely a logikus gondolkodást,
+### Matematikai érvelés *(Reasoning)*
+*Rendszerszintű elem*, amely a logikus gondolkodást,
 az összefüggések bizonyítását és
 a kritikai gondolkodást méri.
 
 ---
 
-### Kína fejlett régiók
+### Új ismeretek
+- Kína: csak fejlett régiók
+(Bejing) és Sanghaj (Shanghai) városa, valamint Csiangszu (Jiangsu) 
 
+és Csöcsiang (Zheijang) tar
 - Az eredmények értelmezésekor fontos figyelembe venni, hogy az országban a mintaválasztási követelmények nem teljesültek teljeskörűen.
 - 3-as képességszint (480-553): Bizonyos szinten képesek
 Százalékokat, hagyományos és tizedes törteket kezelni, tuenak arányosságokkal dolgozni.
