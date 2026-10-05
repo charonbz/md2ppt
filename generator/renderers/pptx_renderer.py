@@ -70,6 +70,10 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
 
         run.font.italic = is_italic
 
+        if item.is_link and item.link_url:
+            run.hyperlink.address = item.link_url
+            run.font.underline = True
+
         rPr = run._r.get_or_add_rPr()
         if is_strike:
             rPr.set('strike', 'sngStrike')

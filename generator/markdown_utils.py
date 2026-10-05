@@ -188,7 +188,6 @@ def parse_markdown_runs(text: str) -> List[TextRun]:
                     r.is_italic = True
                     r.link_url = link_url
                 runs.append(r)
-            runs.append(TextRun(text=f" ({link_url})", is_link=True, is_italic=True, link_url=link_url))
         elif match.group("raw_url"):
             url = match.group("raw_url")
             _append_text_with_newlines(url, is_link=True, is_italic=True, link_url=url)

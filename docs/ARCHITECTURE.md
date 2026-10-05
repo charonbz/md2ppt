@@ -134,7 +134,7 @@ md2ppt/
 | `^superscript^` | Sup token | **Superscript** | `<sup>` in HTML; native `30000` baseline shift in PowerPoint. |
 | `~subscript~` | Sub token | **Subscript** | `<sub>` in HTML; native `-25000` baseline shift in PowerPoint. |
 | `` `code` `` | Code chip | **Inline Code Pill** | Rounded chip in HTML; Consolas monospace run in PowerPoint. |
-| `[link](url)` or raw `https://...` | Link token | **Clickable Link** | `<a href>` in HTML; labeled hyperlink in PowerPoint. |
+| `[link](url)` or raw `https://...` | Link token | **Clickable Link** | `<a href>` in HTML; native PowerPoint hyperlink (`run.hyperlink.address`, underlined italic) showing only the link text. |
 | `->` / `-->` or `<-` / `<--` | Arrow token | **Theme-Colored Arrow (`→` / `←`)** | `<span class="md-arrow">→</span>` (or `←`) with theme `var(--accent)` in HTML/PDF; native run with `accent_rgb` in PowerPoint. `<->` / `<-->` stay literal. |
 | `<!-- audio: file.m4a -->` | `slide.audio_filename` | **Audio Widget** | Base64 standalone player in HTML; native audio shape in PPTX. |
 | `<!-- notes: ... -->` | `slide.notes` | **Speaker Notes** | Presenter notes available during delivery. |

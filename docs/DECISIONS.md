@@ -549,3 +549,16 @@ The user asked for a `--showcase` option that renders one example slide in every
 ### Rationale
 One browser renders all combinations with flat memory: measured peak 1.1 GB and about 4 s for 48 combinations under a 3 GB systemd memory cap. Each combination still goes through the real HTML renderer, so the showcase shows exactly what a deck would look like. The showcase is HTML only; PPTX and PDF follow the same theme data.
 
+---
+
+## ADR-023: Native PowerPoint Hyperlinks Showing Only the Link Text
+
+### Context
+Links in the PPTX were not clickable: `parse_markdown_runs` tagged link runs with `is_link`/`link_url`, but `_add_formatted_runs` never set a hyperlink. It also appended ` (url)` after every `[text](url)`, so a link whose text is its URL printed twice (`https://x (https://x)`) and wrapped badly inside narrow cards.
+
+### Decision
+- Every run with `link_url` gets `run.hyperlink.address` and an underline (italic stays) in `_add_formatted_runs`.
+- `parse_markdown_runs` no longer emits the ` (url)` suffix; the PPTX shows only the link text, like HTML.
+
+### Rationale
+A clickable label makes the printed URL redundant. The PDF is exported from the HTML, so dropping the suffix costs nothing in print.
