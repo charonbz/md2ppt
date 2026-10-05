@@ -1,13 +1,14 @@
 import re
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 from typing import List, Optional
-from PIL import Image
+from PIL import Image, ImageDraw
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Emu, Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls
 from ..models import PresentationData, SlideData, SlideType, ThemeConfig, ArchetypeType, DensityTier, BulletStyle
@@ -172,13 +173,21 @@ _MIN_CARD_DESC_PT = 12
 
 # Card text placement per archetype: (left offset, width reduction, title top offset, bottom padding).
 _CARD_TEXT_GEOMETRY = {
-    ArchetypeType.CARDS: (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.15)),
+    ArchetypeType.CARDS: (Inches(0.25), Inches(0.5), Inches(0.35), Inches(0.15)),
     ArchetypeType.EDITORIAL: (Inches(0.2), Inches(0.3), Inches(0.55), Inches(0.0)),
     ArchetypeType.NEUBRUTALISM: (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.2)),
     ArchetypeType.MINIMAL: (Inches(0.0), Inches(0.0), Inches(0.75), Inches(0.0)),
     ArchetypeType.CORPORATE: (Inches(0.25), Inches(0.5), Inches(0.9), Inches(0.2)),
 }
 _DEFAULT_CARD_TEXT_GEOMETRY = (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.2))  # terminal
+
+
+def _px(n: float) -> Emu:
+    """HTML px to EMU: the HTML slide is 1600 px wide."""
+    return Emu(round(n * Inches(13.333) / 1600))
+
+
+_CARD_BADGE_D = Inches(0.4)
 
 
 @dataclass
@@ -285,7 +294,7 @@ def render_pptx_presentation(pres: PresentationData, theme: ThemeConfig, dist_di
 
         # 2. Add Audio shape if present
         if _has_audio(slide_data):
-            _add_audio_widget(slide, slide_data.audio_path, accent_rgb, badge_bg_rgb, badge_text_rgb, theme)
+            _add_audio_widget(slide, slide_data.audio_path, theme)
 
         # 3. Slide counter in bottom right
         counter_box = slide.shapes.add_textbox(Inches(11.5), Inches(6.8), Inches(1.2), Inches(0.4))
@@ -345,45 +354,71 @@ def render_pptx_presentation(pres: PresentationData, theme: ThemeConfig, dist_di
     return out_file
 
 
-def _add_audio_widget(slide, audio_path: Path, accent_rgb, badge_bg_rgb, badge_text_rgb, theme: ThemeConfig):
-    font_name = _get_font_name(theme)
-    # If neubrutalism, hard shadow for audio badge
-    if theme.archetype == ArchetypeType.NEUBRUTALISM:
-        sh = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(10.24), Inches(0.59), Inches(2.2), Inches(0.6))
+def _play_button_png(bg_hex: str, fg_hex: str) -> BytesIO:
+    """Round play button (HTML `.audio-play-btn`) as a transparent PNG, used as the audio shape's poster."""
+    size = 512  # drawn large and downscaled for smooth edges
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((0, 0, size - 1, size - 1), fill=bg_hex)
+    # 20/40 px triangle like the HTML svg, nudged right to look optically centred
+    draw.polygon([(size * 0.39, size * 0.29), (size * 0.39, size * 0.71), (size * 0.72, size * 0.5)], fill=fg_hex)
+    out = BytesIO()
+    img.resize((128, 128), Image.LANCZOS).save(out, format="PNG")
+    out.seek(0)
+    return out
+
+
+def _add_audio_widget(slide, audio_path: Path, theme: ThemeConfig):
+    """Narration pill mirroring the HTML `.audio-widget`: round play button (the clickable audio shape),
+    'Narration' / 'Click to play' labels. The HTML's animated equalizer bars have no PPTX equivalent."""
+    colors = theme.colors
+    rgb = lambda key, default: RGBColor(*theme.hex_to_rgb(colors.get(key, default)))
+    left, top, w, h = _AUDIO_WIDGET_LEFT, _AUDIO_PILL_TOP, _AUDIO_PILL_W, _AUDIO_PILL_H
+    neubrutalism = theme.archetype == ArchetypeType.NEUBRUTALISM
+
+    if neubrutalism:  # hard offset shadow, as in `.archetype-neubrutalism .audio-widget`
+        sh = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left + _px(3), top + _px(3), w, h)
         sh.fill.solid()
         sh.fill.fore_color.rgb = RGBColor(0, 0, 0)
         sh.line.fill.background()
 
-    shape_type = MSO_SHAPE.RECTANGLE if theme.archetype in (ArchetypeType.NEUBRUTALISM, ArchetypeType.TERMINAL, ArchetypeType.CORPORATE) else MSO_SHAPE.ROUNDED_RECTANGLE
-    badge = slide.shapes.add_shape(shape_type, Inches(10.2), Inches(0.55), Inches(2.2), Inches(0.6))
-    badge.fill.solid()
-    badge.fill.fore_color.rgb = badge_bg_rgb
-    
-    if theme.archetype == ArchetypeType.NEUBRUTALISM:
-        badge.line.color.rgb = RGBColor(0, 0, 0)
-        badge.line.width = Pt(2)
-    else:
-        badge.line.color.rgb = accent_rgb
-        badge.line.width = Pt(1)
-    
-    tf = badge.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = "  🔊 Audio Narration"
-    p.font.name = font_name
-    p.font.size = Pt(11)
-    p.font.bold = True
-    p.font.color.rgb = badge_text_rgb
-    p.alignment = PP_ALIGN.LEFT
+    pill = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE if neubrutalism else MSO_SHAPE.ROUNDED_RECTANGLE, left, top, w, h)
+    if not neubrutalism:
+        pill.adjustments[0] = 0.5
+    pill.fill.solid()
+    pill.fill.fore_color.rgb = rgb("card_bg", "#FFFFFF")
+    pill.line.color.rgb = RGBColor(0, 0, 0) if neubrutalism else rgb("card_border", "#E2E8F0")
+    pill.line.width = Pt(2) if neubrutalism else Pt(1)
+    effect = "" if neubrutalism else (
+        f'<a:outerShdw blurRad="{_px(14)}" dist="{_px(4)}" dir="5400000" algn="t" rotWithShape="0">'
+        '<a:srgbClr val="000000"><a:alpha val="8000"/></a:srgbClr></a:outerShdw>')
+    pill._element.spPr.append(parse_xml(f'<a:effectLst {nsdecls("a")}>{effect}</a:effectLst>'))
 
-    # Add native movie/audio shape (loudspeaker icon that plays on click)
+    btn_d = _px(40)
+    btn_left = left + _px(10)
+    label_left = btn_left + btn_d + _px(12)
+    label = slide.shapes.add_textbox(label_left, top, left + w - label_left, h)
+    ltf = label.text_frame
+    ltf.margin_left = ltf.margin_right = ltf.margin_top = ltf.margin_bottom = 0
+    ltf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    font_name = _get_font_name(theme)
+    for i, (text, size, bold, key) in enumerate((("Narration", 9, True, "primary_text"), ("Click to play", 7.5, False, "secondary_text"))):
+        p = ltf.paragraphs[0] if i == 0 else ltf.add_paragraph()
+        p.text = text
+        p.font.name = font_name
+        p.font.size = Pt(size)
+        p.font.bold = bold
+        p.font.color.rgb = rgb(key, "#000000")
+
+    # The audio shape itself is the play button: clicking it in the slide show starts the narration.
     try:
         slide.shapes.add_movie(
             movie_file=str(audio_path),
-            left=Inches(11.8),
-            top=Inches(0.58),
-            width=Inches(0.52),
-            height=Inches(0.52),
+            left=btn_left,
+            top=top + (h - btn_d) // 2,
+            width=btn_d,
+            height=btn_d,
+            poster_frame_image=_play_button_png(colors.get("audio_btn_bg", colors["accent"]), colors.get("audio_btn_text", "#FFFFFF")),
             mime_type="audio/mp4"
         )
     except Exception as e:
@@ -729,16 +764,41 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             bp.font.color.rgb = RGBColor(255, 255, 255)
             bp.alignment = PP_ALIGN.CENTER
 
-        else:
-            # Terminal & Modern Cards
-            shape_type = MSO_SHAPE.RECTANGLE if arch == ArchetypeType.TERMINAL else MSO_SHAPE.ROUNDED_RECTANGLE
-            card = slide.shapes.add_shape(shape_type, left, top, card_w, height)
+        elif arch == ArchetypeType.CARDS:
+            # Corner radius from the theme (HTML px); the index badge is a circle centred on the top-left corner.
+            card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, card_w, height)
+            card.adjustments[0] = min(0.5, _px(theme.styles.get("card_radius_px", 16)) / min(card_w, height))
             card.fill.solid()
             card.fill.fore_color.rgb = card_bg_rgb
             card.line.color.rgb = card_border_rgb
             card.line.width = Pt(1)
 
-            badge = slide.shapes.add_shape(shape_type, left + Inches(0.4), top + Inches(0.4), Inches(0.55), Inches(0.45))
+            d = _CARD_BADGE_D
+            badge = slide.shapes.add_shape(MSO_SHAPE.OVAL, left - d // 2, top - d // 2, d, d)
+            badge.fill.solid()
+            badge.fill.fore_color.rgb = badge_bg_rgb
+            badge.line.color.rgb = card_border_rgb
+            badge.line.width = Pt(1)
+            btf = badge.text_frame
+            btf.margin_left = btf.margin_right = btf.margin_top = btf.margin_bottom = 0
+            btf.vertical_anchor = MSO_ANCHOR.MIDDLE
+            bp = btf.paragraphs[0]
+            bp.text = f"0{c.card_index}" if c.card_index < 10 else str(c.card_index)
+            bp.font.name = font_name
+            bp.font.size = Pt(11)
+            bp.font.bold = True
+            bp.font.color.rgb = badge_text_rgb
+            bp.alignment = PP_ALIGN.CENTER
+
+        else:
+            # Terminal
+            card = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, card_w, height)
+            card.fill.solid()
+            card.fill.fore_color.rgb = card_bg_rgb
+            card.line.color.rgb = card_border_rgb
+            card.line.width = Pt(1)
+
+            badge = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left + Inches(0.4), top + Inches(0.4), Inches(0.55), Inches(0.45))
             badge.fill.solid()
             badge.fill.fore_color.rgb = badge_bg_rgb
             badge.line.fill.background()
@@ -979,7 +1039,10 @@ def _has_audio(slide_data: SlideData) -> bool:
 _HEADER_TITLE_PT = 32
 _MIN_HEADER_TITLE_PT = 20
 _HEADER_TITLE_H = Inches(1.1)
-_AUDIO_WIDGET_LEFT = Inches(10.2)
+_AUDIO_PILL_W = _px(145)  # HTML: 10 px pad + 40 px button + 12 px gap + label + 18 px pad (no equalizer)
+_AUDIO_PILL_H = Inches(0.45)
+_AUDIO_PILL_TOP = Inches(0.6)
+_AUDIO_WIDGET_LEFT = Inches(12.333) - _AUDIO_PILL_W  # right-aligned with the content area
 
 
 def _add_header(slide, category: str, slide_data: SlideData, accent_rgb, primary_rgb, theme: ThemeConfig):

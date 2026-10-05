@@ -594,3 +594,18 @@ Slide, title-slide and card titles use `_get_title_font`: on archetypes other th
 Only serif titles were visibly missing; sans and display stacks already map to the same PPTX fonts the archetypes use, so a general CSS-stack-to-PPTX mapping was not needed.
 
 Georgia titles are wider than Calibri, so the cards archetype's bottom text padding in `_CARD_TEXT_GEOMETRY` went from 0.2" to 0.15"; the pisa deck then fits at 12 pt again with `--theme warm_academic --archetype cards`.
+
+---
+
+## ADR-026: PPTX Narration Pill and Corner Card Badges
+
+### Context
+In PowerPoint the narration control was a 2.2" pink box reading "🔊 Audio Narration" with python-pptx's loudspeaker icon on top, unlike the HTML pill. Cards-archetype cards used PowerPoint's default rounded-rectangle radius (a sixth of the short side, about 0.43" on a four-card slide) instead of the theme's `card_radius_px`, and their index badge took the top 0.95" of the card.
+
+### Decision
+- The narration control is a pill built from native shapes with the HTML px sizes. The embedded audio shape is the play button: its poster image is a round play icon drawn with Pillow in the theme's `audio_btn_bg` / `audio_btn_text`, so the click target is the button the user sees.
+- The equalizer bars are dropped: in the HTML they animate while playing, and a static copy in PowerPoint would only suggest a state it cannot show.
+- Cards-archetype cards take their corner radius from `card_radius_px`, and the index badge is a circle centred on the top-left corner. The card title moves up to 0.35" from the card top.
+
+### Rationale
+The pill keeps the PPTX consistent with the HTML the user already likes, and using the media shape as the button avoids a second, invisible click target.
