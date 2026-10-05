@@ -172,12 +172,13 @@ _MIN_CARD_DESC_PT = 12
 
 # Card text placement per archetype: (left offset, width reduction, title top offset, bottom padding).
 _CARD_TEXT_GEOMETRY = {
+    ArchetypeType.CARDS: (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.15)),
     ArchetypeType.EDITORIAL: (Inches(0.2), Inches(0.3), Inches(0.55), Inches(0.0)),
     ArchetypeType.NEUBRUTALISM: (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.2)),
     ArchetypeType.MINIMAL: (Inches(0.0), Inches(0.0), Inches(0.75), Inches(0.0)),
     ArchetypeType.CORPORATE: (Inches(0.25), Inches(0.5), Inches(0.9), Inches(0.2)),
 }
-_DEFAULT_CARD_TEXT_GEOMETRY = (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.2))  # cards, terminal
+_DEFAULT_CARD_TEXT_GEOMETRY = (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.2))  # terminal
 
 
 @dataclass

@@ -592,3 +592,5 @@ Slide, title-slide and card titles use `_get_title_font`: on archetypes other th
 
 ### Rationale
 Only serif titles were visibly missing; sans and display stacks already map to the same PPTX fonts the archetypes use, so a general CSS-stack-to-PPTX mapping was not needed.
+
+Georgia titles are wider than Calibri, so the cards archetype's bottom text padding in `_CARD_TEXT_GEOMETRY` went from 0.2" to 0.15"; the pisa deck then fits at 12 pt again with `--theme warm_academic --archetype cards`.
