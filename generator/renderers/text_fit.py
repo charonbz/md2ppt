@@ -21,7 +21,7 @@ _MEASURE_PX = 1000  # glyph widths are measured at 1000 px per em, then scaled t
 @dataclass(frozen=True)
 class _Face:
     files: Tuple[str, str, str, str]  # regular, bold, italic, bold italic
-    bold_variation: Optional[bytes] = None  # variable fonts: named instance used for bold
+    variable_weight: bool = False  # variable font with a single wght axis: 400 regular, 700 bold
     width_scale: float = 1.0  # > 1.0 when the stand-in font is not metric-compatible
 
 
@@ -36,7 +36,7 @@ _FACES = {
     "Calibri": _CARLITO,
     "Arial": _Face(_LIB_SANS),
     "Arial Black": _Face((_LIB_SANS[1], _LIB_SANS[1], _LIB_SANS[3], _LIB_SANS[3]), width_scale=1.2),
-    "Georgia": _Face(("Gelasio[wght].ttf", "Gelasio[wght].ttf", "Gelasio-Italic[wght].ttf", "Gelasio-Italic[wght].ttf"), bold_variation=b"Bold"),
+    "Georgia": _Face(("Gelasio[wght].ttf", "Gelasio[wght].ttf", "Gelasio-Italic[wght].ttf", "Gelasio-Italic[wght].ttf"), variable_weight=True),
     "Consolas": _Face(_LIB_MONO, width_scale=1.08),
 }
 
@@ -49,8 +49,8 @@ def _font(font_name: str, bold: bool, italic: bool) -> Tuple[ImageFont.FreeTypeF
     face = _FACES.get(font_name, _CARLITO)
     path = FONTS_DIR / face.files[(2 if italic else 0) + (1 if bold else 0)]
     font = ImageFont.truetype(str(path), _MEASURE_PX)
-    if face.bold_variation:
-        font.set_variation_by_name(face.bold_variation if bold else b"Regular")
+    if face.variable_weight:
+        font.set_variation_by_axes([700 if bold else 400])
     return font, face.width_scale
 
 
