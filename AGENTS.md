@@ -50,7 +50,7 @@ This file contains mandatory guidelines and rules for all AI coding assistants (
 
 5. **Version Control Hygiene:**
    * The `dist/` subfolders are generated artifacts and **must never be committed to Git** (enforced via `.gitignore`).
-   * The `slideshow_1` directory serves as a living reference example; its source assets (`slides.md`, `slide_title.m4a`) must be preserved.
+   * The `pisa` directory serves as a living reference example; its `slides.md` must be preserved (narration audio stays local and is not committed).
 
 ---
 
@@ -60,14 +60,14 @@ Before completing your turn, execute the following verification suite:
 
 ```bash
 # 1. Verify generation
-./run.py slideshow_1
+./run.py pisa
 
 # 2. Verify PPTX structure and embedded media
-.venv/bin/python -c "from pptx import Presentation; prs = Presentation('slideshow_1/dist/presentation.pptx'); assert len(prs.slides) == 4"
+.venv/bin/python -c "from pptx import Presentation; prs = Presentation('pisa/dist/presentation.pptx'); assert len(prs.slides) == 7"
 
 # 3. Verify theme listing and generation with an alternative theme
 ./run.py --list-themes
-./run.py slideshow_1 --theme dark_mode
+./run.py pisa --theme dark_mode
 
 # 4. Verify documentation maintenance
 git status

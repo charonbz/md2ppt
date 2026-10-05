@@ -67,9 +67,9 @@ slideshowGenerator/
 │   │   └── pdf_renderer.py     # Headless Chrome vector PDF exporter
 │   ├── showcase.py             # --showcase: every theme x archetype on one PNG grid
 │   └── cli.py                  # CLI entry point and reusable TCP web server
-├── slideshow_1/                # Living reference example
+├── pisa/                       # Living reference example
 │   ├── slides.md               # Source markdown with audio metadata
-│   ├── slide_title.m4a         # Recorded narration audio
+│   ├── Title.m4a, slide_*.m4a  # Recorded narration audio
 │   └── dist/                   # Output artifacts (ignored by git)
 ├── run.py                      # Root launcher with automatic .venv detection
 ├── requirements.txt            # Python dependencies (python-pptx, pillow, lxml)
@@ -157,10 +157,10 @@ Visual appearance is governed by two orthogonal dimensions:
 Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for backwards compatibility). Users can override the structural style on the command line:
 ```bash
 # Default pairing (warm_academic with editorial):
-./run.py slideshow_1 --theme warm_academic
+./run.py pisa --theme warm_academic
 
 # Orthogonal override (warm_academic palette with neubrutalism structure):
-./run.py slideshow_1 --theme warm_academic --archetype neubrutalism
+./run.py pisa --theme warm_academic --archetype neubrutalism
 
 # Configure bullet point style:
 ./run.py pisa --theme warm_academic --archetype editorial --bullet-style editorial

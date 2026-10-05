@@ -12,27 +12,27 @@ A presentation generation platform that transforms Markdown outlines and attache
 The generator automatically manages its Python virtual environment (`.venv`), so it can be executed directly:
 
 ```bash
-# Generate slideshow_1 using the default (modern_clean) theme:
-./run.py slideshow_1
+# Generate pisa using the default (modern_clean) theme:
+./run.py pisa
 
 # Generate using an alternative theme:
-./run.py slideshow_1 --theme dark_mode
+./run.py pisa --theme dark_mode
 
 # Generate only specific formats (e.g., PPTX and PDF only):
-./run.py slideshow_1 --format pptx,pdf
+./run.py pisa --format pptx,pdf
 
 # View the presentation with the built-in server (auto-rebuilds on edits to slides.md):
-./run.py slideshow_1 --serve 8080
+./run.py pisa --serve 8080
 
 # Or watch and auto-rebuild in the background without launching a web server:
-./run.py slideshow_1 --watch
+./run.py pisa --watch
 ```
 
 The output artifacts are written to the `dist/` subfolder inside the slideshow directory:
-* `slideshow_1/dist/presentation.pptx`
-* `slideshow_1/dist/index.html`
-* `slideshow_1/dist/presentation.pdf`
-* `slideshow_1/dist/slide_title.m4a` & `slide_title.mp3`
+* `pisa/dist/presentation.pptx`
+* `pisa/dist/index.html`
+* `pisa/dist/presentation.pdf`
+* `pisa/dist/*.m4a` & `*.mp3` (narration audio, transcoded)
 
 ---
 
@@ -220,16 +220,16 @@ Presentation styling is governed by two orthogonal dimensions:
 ### Orthogonal Combination & Overrides:
 ```bash
 # Generate using a curated theme (uses the theme's default archetype):
-./run.py slideshow_1 --theme warm_academic
+./run.py pisa --theme warm_academic
 
 # Override the structural archetype (e.g. apply neubrutalism structure to warm_academic colors):
-./run.py slideshow_1 --theme warm_academic --archetype neubrutalism
+./run.py pisa --theme warm_academic --archetype neubrutalism
 
 # Try different archetypes:
-./run.py slideshow_1 --theme dark_terminal
-./run.py slideshow_1 --theme swiss_minimal
-./run.py slideshow_1 --theme corporate_navy
-./run.py slideshow_1 --theme bold_neubrutalism
+./run.py pisa --theme dark_terminal
+./run.py pisa --theme swiss_minimal
+./run.py pisa --theme corporate_navy
+./run.py pisa --theme bold_neubrutalism
 ```
 
 ### Generate a New Theme with AI:
@@ -239,7 +239,7 @@ Create a new theme via natural language prompt (in English or Hungarian):
 ```
 The generator creates the theme in `generator/themes/`, ready for immediate use:
 ```bash
-./run.py slideshow_1 --theme cyberpunk_neon_dark_theme
+./run.py pisa --theme cyberpunk_neon_dark_theme
 ```
 
 To create themes with external LLMs (Claude, ChatGPT), see [`generator/themes/THEME_PROMPT.md`](generator/themes/THEME_PROMPT.md).

@@ -155,7 +155,7 @@ Users authoring slide decks expect standard Markdown structures to work intuitiv
 
 ### Rationale
 - Completely eliminates syntax surprises for users writing plain or extended Markdown.
-- Preserves 100% backward compatibility with existing decks (`slideshow_1`).
+- Preserves 100% backward compatibility with existing decks (`pisa`).
 - Delivers visually stunning, structured card and code layouts in HTML, PPTX, and PDF with zero manual configuration.
 
 ---

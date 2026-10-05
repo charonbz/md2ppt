@@ -235,7 +235,7 @@ def main():
         "slideshow_dir",
         nargs="?",
         type=str,
-        help="The source slideshow directory (e.g. slideshow_1) containing slides.md."
+        help="The source slideshow directory (e.g. pisa) containing slides.md."
     )
 
     parser.add_argument(
@@ -362,7 +362,7 @@ def main():
         print(f"\n✨ Generating new theme based on description: '{args.ai_theme}'...")
         out_path = generate_ai_theme(args.ai_theme)
         print(f"✅ New theme successfully created: {out_path}")
-        print(f"👉 Usage: ./run.py {args.slideshow_dir or 'slideshow_1'} --theme {out_path.stem}\n")
+        print(f"👉 Usage: ./run.py {args.slideshow_dir or 'pisa'} --theme {out_path.stem}\n")
         if not args.slideshow_dir:
             return 0
 

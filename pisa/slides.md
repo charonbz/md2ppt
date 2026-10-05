@@ -1,5 +1,6 @@
 # PISA 2025 összefoglaló jelentés reflexiói
 Készítette: Boncz Zoltán *(bonczz@gmail.com)*
+<!-- audio: Title.m4a -->
 ---
 
 # Matematikai ismeretek
@@ -29,7 +30,7 @@ Készítette: Boncz Zoltán *(bonczz@gmail.com)*
 - grafikonok elemzése
 - adatokból történő következtetések
 - a véletlen szerepe
-
+<!-- audio: slide_1.m4a -->
 ---
 
 # Matematikai folyamatok és gondolkodás
@@ -53,7 +54,7 @@ hogy a megoldásnak van-e reális értelme.
 *Rendszerszintű elem*, amely a logikus gondolkodást,
 az összefüggések bizonyítását és
 a kritikai gondolkodást méri.
-
+<!-- audio: slide_2.m4a -->
 ---
 
 # Észrevételek
@@ -61,7 +62,7 @@ a kritikai gondolkodást méri.
 ### Nem teljes ország
 **Kína**
 Bejing és Shanghai városa
-Jiangsu és (Zheijang) tartományok
+Jiangsu és Zheijang tartományok
 
 ### Nem reprezentatív mintavétel
 **Egyesült Államok, Hollandia, ...**
@@ -69,43 +70,51 @@ Jiangsu és (Zheijang) tartományok
 hogy az országban a mintaválasztási követelmények
 nem teljesültek teljeskörűen.*
 
-3-as képességszint (480-553):
-Bizonyos szinten képesek százalékokat, hagyományos és tizedes törteket kezelni, tudnak arányosságokkal dolgozni.
-
+### 3. képességszint *(480-553)*
+*"Bizonyos szinten képesek százalékokat, hagyományos és tizedes törteket kezelni, tudnak arányosságokkal dolgozni."*
+<!-- audio: slide_3.m4a -->
 ---
 
 # Tárgyi tudás -> Kompetencia *(fejtudás -> kéztudás)*
 
-Mi a kéztudás:
+### Mi a kompetencia, avagy kéztudás:
 - Elit Alakulat, távolságbecslés
 - Milyen hosszú egy WC papír tekercs?
-- Összement gyerek ruhája és pizzája
-
----
 
 ### Feltételek
 - Biztonságos környezet
 - Szabad hibázni
 
-### A tantárgy
-- matematika tisztazasa, mi a szerepe, hogyan hat az eletunkre, hogyan segiti a donteseinket es a kritikus gondolkodast.
+### Matematika mint fogalom és mint tantárgy
+Mi a szerepe, hogyan hat az életünkre, hogyan segíti a döntéseinket és a kritikus gondolkodást?
 
-### Az oktató
-- oktatás vs facilitalas
-- top down -> bottom up (deduktív -> induktív)
+### Az oktató szerepe
+- oktatás -> **facilitálás**
+- top down -> **bottom up** _(deduktív -> **induktív**)_
+<!-- audio: slide_4.m4a -->
+---
 
-### Az óra
-	- probléma felvetése
-	- közös megértés
-	- egyéni ötletelés
-	- páros munka
-	- csoportos munka
-	- osztály szintű munka
-	- matematikai formalizmus bemutatása
-	- matematikán belüli kapcsolódási pontok
-	- matematikán kívüli kapcsolódási pontok
+# A gyakorlatban
+
+### Egy óra (vagy blokk) szerkezete
+- probléma felvetése
+- közös megértés (mi a probléma gyökere)
+- egyéni ötletelés
+- páros munka
+- csoportos munka (4-6 fő) _(huddle)_
+- osztály szintű munka
+- matematikai formalizmus bemutatása <- oktatás
+- matematikán belüli, kívüli kapcsolódási pontok (közös)
 
 ### Számonkérés
-- mit rontottál vs el mit csináltál jól
+- mit rontottál -> el mit csináltál jól
 - egyértelmű követelmények
-- önreflexió
+- önreflexió erősítése
+<!-- audio: slide_5.m4a -->
+
+---
+
+# Köszönöm a figyelmet!
+
+- Diasor az oktató által szabadon felhasználható.
+- HTML verzió: [https://bejewelled-khapse-298b45.netlify.app](https://bejewelled-khapse-298b45.netlify.app/)
