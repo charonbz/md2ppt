@@ -107,7 +107,7 @@ Mi a szerepe, hogyan hat az életünkre, hogyan segíti a döntéseinket és a k
 - matematikán belüli, kívüli kapcsolódási pontok (közös)
 
 ### Számonkérés
-- mit rontottál -> el mit csináltál jól
+- mit rontottál el -> mit csináltál jól
 - egyértelmű követelmények
 - önreflexió erősítése
 <!-- audio: slide_5.m4a -->
