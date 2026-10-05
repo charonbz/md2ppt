@@ -25,6 +25,10 @@ class TextRun:
 
 
 # Inline Markdown token regex with full extended syntax
+# "->"/"-->" become →, "<-"/"<--" become ←; "<->" / "<-->" are left untouched (neither direction applies).
+RIGHT_ARROW_PATTERN = r"(?<![<!-])(?:-->|->)"
+LEFT_ARROW_PATTERN = r"(?<![<-])(?:<--|<-)(?![->])"
+
 INLINE_TOKEN_RE = re.compile(
     r"(?P<comment><!--[\s\S]*?-->)|"
     r"(?P<link>\[(?P<link_text>[^\]]+)\]\((?P<link_url>[^)]+)\))|"
@@ -39,7 +43,8 @@ INLINE_TOKEN_RE = re.compile(
     r"(?P<bold_under>__(?P<bold_under_text>.+?)__)|"
     r"(?P<italic_star>(?<!\*)\*(?P<italic_star_text>[^*]+?)\*(?!\*))|"
     r"(?P<italic_under>(?<!_)_(?P<italic_under_text>[^_]+?)_(?!_))|"
-    r"(?P<arrow>(?<![<!-])(?:-->|->)|→)",
+    rf"(?P<arrow>{RIGHT_ARROW_PATTERN}|→)|"
+    rf"(?P<left_arrow>{LEFT_ARROW_PATTERN}|←)",
     re.IGNORECASE,
 )
 
@@ -65,15 +70,16 @@ def strip_markdown(text: str) -> str:
     cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
     # Strip leading heading hashes
     cleaned = re.sub(r"^#{1,6}\s*", "", cleaned)
-    # Convert -> or --> to Unicode arrow →
-    cleaned = re.sub(r"(?<![<!-])(?:-->|->)", "→", cleaned)
+    # Convert -> / --> to → and <- / <-- to ←
+    cleaned = re.sub(RIGHT_ARROW_PATTERN, "→", cleaned)
+    cleaned = re.sub(LEFT_ARROW_PATTERN, "←", cleaned)
     # Strip trailing colons or excess whitespace
     cleaned = cleaned.strip()
     return cleaned
 
 
 def render_markdown_html(text: str, allow_links: bool = True) -> str:
-    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs, <br>, -> arrows) to safe HTML.
+    """Converts inline Markdown (**bold**, *italic*, `code`, ~~strike~~, ==highlight==, ^sup^, ~sub~, [link](url), raw URLs, <br>, ->/<- arrows) to safe HTML.
 
     allow_links=False renders link and URL tokens as plain text (used for link text, so anchors never nest).
     """
@@ -98,6 +104,8 @@ def render_markdown_html(text: str, allow_links: bool = True) -> str:
             parts.append("<br/>")
         elif match.group("arrow"):
             parts.append('<span class="md-arrow">→</span>')
+        elif match.group("left_arrow"):
+            parts.append('<span class="md-arrow">←</span>')
         elif match.group("code_tick"):
             content = html.escape(match.group("code_text"))
             parts.append(f"<code>{content}</code>")
@@ -168,6 +176,8 @@ def parse_markdown_runs(text: str) -> List[TextRun]:
             runs.append(TextRun(text="", is_break=True))
         elif match.group("arrow"):
             runs.append(TextRun(text="→", is_arrow=True))
+        elif match.group("left_arrow"):
+            runs.append(TextRun(text="←", is_arrow=True))
         elif match.group("code_tick"):
             _append_text_with_newlines(match.group("code_text"), is_code=True)
         elif match.group("link"):

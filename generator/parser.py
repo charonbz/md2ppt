@@ -547,8 +547,11 @@ def _parse_content_structures(lines: List[str], source_dir: Path) -> Dict[str, A
             # ponytail: keep inline markdown for card titles
             card_title = _strip_trailing_colon(stripped.lstrip("#"))
             i += 1
+            # The body may be separated from its heading by blank lines (standard Markdown spacing)
+            while i < n and not lines[i].strip():
+                i += 1
             body_lines = []
-            while i < n and lines[i].strip() and not lines[i].strip().startswith(("### ", "## ", "# ", "---", ">", "```")) and not (strip_markdown(lines[i].strip()).endswith(":") and len(lines[i].strip()) < 40):
+            while i < n and lines[i].strip() and not lines[i].strip().startswith(("### ", "## ", "# ", "---", ">", "```", "|", "![")) and not (strip_markdown(lines[i].strip()).endswith(":") and len(lines[i].strip()) < 40):
                 body_lines.append(lines[i].strip())
                 i += 1
             cards.append(CardItem(title=card_title, description="\n".join(body_lines)))

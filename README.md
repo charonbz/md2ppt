@@ -212,6 +212,9 @@ Presentation styling is governed by two orthogonal dimensions:
 
 # List all available themes (color palettes) and their default archetypes:
 ./run.py --list-themes
+
+# Preview every theme x archetype combination on one PNG grid (default: dist/showcase.png):
+./run.py --showcase
 ```
 
 ### Orthogonal Combination & Overrides:

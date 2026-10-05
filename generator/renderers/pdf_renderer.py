@@ -3,27 +3,30 @@ import shutil
 from pathlib import Path
 
 
+CHROME_CANDIDATES = [
+    "google-chrome-stable",
+    "google-chrome",
+    "chromium",
+    "chromium-browser",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+]
+
+
+def find_chrome_binary(purpose: str) -> str:
+    """Returns the first Chrome/Chromium executable found in PATH; raises if none is installed."""
+    for candidate in CHROME_CANDIDATES:
+        found = shutil.which(candidate)
+        if found:
+            return found
+    raise RuntimeError(f"Google Chrome or Chromium is required to {purpose}, but was not found in PATH.")
+
+
 def render_pdf_presentation(html_path: Path, dist_dir: Path) -> Path:
     dist_dir.mkdir(parents=True, exist_ok=True)
     pdf_out = dist_dir / "presentation.pdf"
 
-    # Find chrome or chromium executable
-    chrome_bin = None
-    for candidate in [
-        "google-chrome-stable",
-        "google-chrome",
-        "chromium",
-        "chromium-browser",
-        "/usr/bin/google-chrome-stable",
-        "/usr/bin/chromium"
-    ]:
-        found = shutil.which(candidate)
-        if found:
-            chrome_bin = found
-            break
-
-    if not chrome_bin:
-        raise RuntimeError("Google Chrome or Chromium is required to export PDF, but was not found in PATH.")
+    chrome_bin = find_chrome_binary("export PDF")
 
     cmd = [
         chrome_bin,

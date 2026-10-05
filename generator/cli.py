@@ -13,6 +13,7 @@ from .parser import parse_slides_file
 from .theme_engine import list_available_themes, list_available_archetypes, load_theme, DEFAULT_THEME_ID
 from .theme_generator import generate_ai_theme
 from .renderers import render_html_presentation, render_pptx_presentation, render_pdf_presentation
+from .showcase import render_showcase
 
 
 class ReusableTCPServer(socketserver.TCPServer):
@@ -279,6 +280,15 @@ def main():
     )
 
     parser.add_argument(
+        "--showcase",
+        type=str,
+        nargs="?",
+        const="dist/showcase.png",
+        metavar="PNG",
+        help="Render an example slide in every theme x archetype combination into one PNG grid (default: dist/showcase.png)."
+    )
+
+    parser.add_argument(
         "--format",
         type=str,
         default="all",
@@ -335,7 +345,19 @@ def main():
         print("💡 Override structural style with: --archetype <name>\n")
         return 0
 
-    # 3. Handle AI theme generation
+    # 3. Handle the theme x archetype showcase
+    if args.showcase:
+        print("\n🖼️  Rendering showcase (every theme x archetype)...")
+        start = time.time()
+        try:
+            out_path = render_showcase(Path(args.showcase), bullet_style_override=args.bullet_style)
+        except Exception as e:
+            print(f"❌ Showcase failed: {e}", file=sys.stderr)
+            return 1
+        print(f"✅ Showcase saved to {out_path} in {time.time() - start:.1f}s\n")
+        return 0
+
+    # 4. Handle AI theme generation
     if args.ai_theme:
         print(f"\n✨ Generating new theme based on description: '{args.ai_theme}'...")
         out_path = generate_ai_theme(args.ai_theme)

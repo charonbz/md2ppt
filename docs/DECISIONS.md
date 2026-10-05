@@ -444,7 +444,7 @@ Previously:
 
 ---
 
-## ADR-019: Automatic Arrow Replacement (`->` to `→`) with Theme Color Styling
+## ADR-019: Automatic Arrow Replacement (`->` to `→`, `<-` to `←`) with Theme Color Styling
 
 ### Context
 Slide titles, card titles, bullet lists, and paragraphs frequently use `->` as transition indicators (e.g. `# Tárgyi tudás -> Kompetencia *(fejtudás -> kéztudás)*`).
@@ -468,6 +468,10 @@ Previously:
    - **HTML (`html_renderer.py`)**: Renders `<span class="md-arrow">→</span>` with CSS `color: var(--accent); font-style: normal; font-weight: 700; display: inline-block; padding: 0 0.08em;`.
    - **PowerPoint (`pptx_renderer.py`)**: `_add_formatted_runs()` checks `item.is_arrow` and generates native PowerPoint runs with `font.color.rgb = accent_color` and `font.bold = True`. All slide renderers pass `accent_color=accent_rgb`.
    - **PDF (`pdf_renderer.py`)**: Inherits HTML styling directly with pixel-perfect accent-colored vector arrows.
+
+4. **Left Arrows (amendment)**:
+   - `<-` and `<--` (and a literal `←`) are tokenized as `left_arrow` and rendered as `←` with the same `md-arrow` styling / accent-colored PPTX run; `strip_markdown()` converts them too.
+   - Both patterns live in `RIGHT_ARROW_PATTERN` / `LEFT_ARROW_PATTERN` shared by the tokenizer and `strip_markdown()`. Bidirectional `<->` / `<-->` match neither direction and stay literal; HTML comments (`<!--`) are consumed by the earlier comment token.
 
 ### Rationale
 - Elevates typography from raw ASCII code conventions (`->`) to typographic presentation arrows (`→`) highlighted in the theme's signature accent color.
@@ -515,6 +519,7 @@ ADR-017 and ADR-019 keep inline markdown in card titles and slide headings. Seve
 - `- **Kulcs:** érték` split at the colon inside the bold marker, giving the title `**Kulcs`.
 - `.rstrip(":")` missed colons inside emphasis (`_Részei:_`).
 - Multi-line HTML comments inside card bodies leaked onto slides, with `-->` turned into an arrow.
+- A `##`/`###` heading separated from its content by a blank line (normal Markdown spacing) produced an empty card; the bullets below it became loose list items, and were dropped entirely when the slide had another card.
 
 ### Decision
 1. `PresentationData.title` is plain text (`strip_markdown` of the title slide heading); slide headings keep their markdown. HTML escapes it everywhere, including `<title>`.
@@ -523,14 +528,24 @@ ADR-017 and ADR-019 keep inline markdown in card titles and slide headings. Seve
 4. Demoting a card into a list item wraps the title in `**` only when it has no markup of its own.
 5. HTML comments outside fenced code are removed in the parser; the inline comment token also matches across newlines.
 6. Link text is parsed recursively in both renderers (`parse_markdown_runs` and `render_markdown_html`); HTML renders link text without link tokens so anchors never nest.
+7. A `##`/`###` card heading skips blank lines before its body, then collects lines until the next blank line, heading, quote, code fence, table row, image, or short `Term:` line.
 
 ### Rationale
 Text that is shown as markdown is rendered as markdown, and text used as a plain label is stripped once at the source, so the three formats can't drift apart.
 
+---
 
+## ADR-022: Theme x Archetype Showcase PNG in a Single Browser Process
 
+### Context
+The user asked for a `--showcase` option that renders one example slide in every theme and archetype combination onto a single PNG. The first version launched one headless Chrome per combination (8 in parallel, 48+ launches with separate profiles) and tiled the screenshots with Pillow. Running it crashed the user's computer twice.
 
+### Decision
+- `generator/showcase.py` builds a fixed Hungarian example slide (three heading cards with bold, code, highlight and both arrow directions) as a standalone `index.html` per combination via the normal HTML renderer.
+- One grid page embeds every combination as an iframe scaled to 30% (rows = themes, columns = archetypes, labelled), and a **single** headless Chrome process screenshots it (`--virtual-time-budget`, 120 s timeout).
+- The Chrome lookup moved to `find_chrome_binary()` in `pdf_renderer.py`, shared by the PDF export and the showcase.
+- `--showcase [PNG]` defaults to `dist/showcase.png` (ignored by Git) and respects `--bullet-style`.
 
-
-
+### Rationale
+One browser renders all combinations with flat memory: measured peak 1.1 GB and about 4 s for 48 combinations under a 3 GB systemd memory cap. Each combination still goes through the real HTML renderer, so the showcase shows exactly what a deck would look like. The showcase is HTML only; PPTX and PDF follow the same theme data.
 

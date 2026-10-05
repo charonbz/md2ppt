@@ -65,6 +65,7 @@ slideshowGenerator/
 │   │   ├── html_renderer.py    # Interactive standalone HTML5 presentation renderer
 │   │   ├── pptx_renderer.py    # PowerPoint generator (python-pptx)
 │   │   └── pdf_renderer.py     # Headless Chrome vector PDF exporter
+│   ├── showcase.py             # --showcase: every theme x archetype on one PNG grid
 │   └── cli.py                  # CLI entry point and reusable TCP web server
 ├── slideshow_1/                # Living reference example
 │   ├── slides.md               # Source markdown with audio metadata
@@ -114,7 +115,7 @@ slideshowGenerator/
 | `---` or `# Slide` or `# ` (H1) | Slide boundary | **Slide Transition** | Delimits slides. Delimiter mode automatically avoids phantom slides. |
 | `# Title` (Slide 1) | `SlideType.TITLE` | **Title Slide** | Displays main deck title, presenter pill, and author credit. |
 | `# Header` or `## Header` or `**Title**` | `slide.title` | **Slide Header** | Cleaned of asterisks/hashes. Styled with theme title font and accent colors. |
-| `### Card Title`<br/>`Description` | `CardItem` | **Info Card Box** | Floating card with sequential numeric index badge (`01`, `02`). |
+| `### Card Title`<br/>`Description` | `CardItem` | **Info Card Box** | Floating card with sequential numeric index badge (`01`, `02`). Blank lines between the heading and its body are allowed; the body ends at the next blank line, heading, quote, code fence, table or image. |
 | `Term:`<br/>`: Definition line 1`<br/>`: Definition line 2` | `CardItem` | **Definition Card Box** | Standard Markdown definition list rendered into visual cards. |
 | `- Term:`<br/>`  **Prop**: Value` | `CardItem` | **Property Card Box** | Indented multi-line bullets converted into card containers. |
 | `- Title: Description`<br/>`Title: Description` | `CardItem` | **Key-Value Card Box** | Single-line colon syntax parsed into structured cards. |
@@ -134,7 +135,7 @@ slideshowGenerator/
 | `~subscript~` | Sub token | **Subscript** | `<sub>` in HTML; native `-25000` baseline shift in PowerPoint. |
 | `` `code` `` | Code chip | **Inline Code Pill** | Rounded chip in HTML; Consolas monospace run in PowerPoint. |
 | `[link](url)` or raw `https://...` | Link token | **Clickable Link** | `<a href>` in HTML; labeled hyperlink in PowerPoint. |
-| `->` or `-->` | Arrow token | **Theme-Colored Arrow (`→`)** | `<span class="md-arrow">→</span>` with theme `var(--accent)` in HTML/PDF; native run with `accent_rgb` in PowerPoint. |
+| `->` / `-->` or `<-` / `<--` | Arrow token | **Theme-Colored Arrow (`→` / `←`)** | `<span class="md-arrow">→</span>` (or `←`) with theme `var(--accent)` in HTML/PDF; native run with `accent_rgb` in PowerPoint. `<->` / `<-->` stay literal. |
 | `<!-- audio: file.m4a -->` | `slide.audio_filename` | **Audio Widget** | Base64 standalone player in HTML; native audio shape in PPTX. |
 | `<!-- notes: ... -->` | `slide.notes` | **Speaker Notes** | Presenter notes available during delivery. |
 | `<!-- type: ... -->` | `slide.slide_type` | **Layout Override** | Explicitly forces `title`, `cards`, `definition`, `code`, `table`, `image`, or `standard`. |
@@ -167,6 +168,10 @@ Each theme JSON declares an optional `"archetype"` (defaulting to `"cards"` for 
 # Discover all archetypes & themes:
 ./run.py --list-archetypes
 ./run.py --list-themes
+
+# Render the example slide in every theme x archetype combination into one PNG grid:
+./run.py --showcase                  # -> dist/showcase.png
+./run.py --showcase /tmp/themes.png --bullet-style refined
 ```
 
 - **Configurable Bullet Styles (`BulletStyle`, `--bullet-style`, `--bullets`)**:
@@ -228,3 +233,4 @@ To prevent sparse slides from having tiny fonts while ensuring content-heavy sli
   - Automatically re-executes the build pipeline with the exact flags originally provided (`--theme`, `--archetype`, `--format`).
   - Catches build exceptions gracefully so partial/invalid editor saves do not crash the running development server; a failed rebuild is reported as `❌ Rebuild failed` on stderr.
   - Allows instant previewing on browser refresh (`F5`) without restarting the server.
+- **Showcase (`--showcase [PNG]`, `generator/showcase.py`)**: Renders a built-in example slide through the HTML renderer for every theme x archetype combination, embeds them as scaled iframes in one grid page, and screenshots it with a single headless Chrome process (one browser for all combinations keeps memory flat). Default output `dist/showcase.png`.
