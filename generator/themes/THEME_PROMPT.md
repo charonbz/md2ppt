@@ -5,7 +5,7 @@ To generate a new presentation theme using any AI (Antigravity chat, Claude, Cha
 ---
 
 ```markdown
-Create a new presentation theme for the slideshowGenerator system conforming to the following JSON schema.
+Create a new presentation theme for the md2ppt system conforming to the following JSON schema.
 Desired theme aesthetic: [Enter your description here, e.g., "Nordic minimalism with icy blue and slate gray tones" or "Természetközeli zöld és fehér kártyás stílus"].
 
 Your response must contain ONLY a single valid JSON code block conforming to this schema:

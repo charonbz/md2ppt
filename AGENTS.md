@@ -1,6 +1,6 @@
 # Guidelines and Rules for AI Coding Agents (AGENTS.md)
 
-This file contains mandatory guidelines and rules for all AI coding assistants (Agents) working on the **slideshowGenerator** codebase.
+This file contains mandatory guidelines and rules for all AI coding assistants (Agents) working on the **md2ppt** codebase.
 
 ---
 

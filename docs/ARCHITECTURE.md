@@ -1,6 +1,6 @@
 # System Architecture & Technical Documentation
 
-This document describes the internal architecture, technical background, and data flow of the **Slideshow Generator**.
+This document describes the internal architecture, technical background, and data flow of **md2ppt**.
 
 ---
 
@@ -45,7 +45,7 @@ flowchart TD
 ## 3. Directory Layout & Components
 
 ```
-slideshowGenerator/
+md2ppt/
 ├── docs/                       # System & architectural documentation
 │   ├── ARCHITECTURE.md         # Detailed technical background and components
 │   └── DECISIONS.md            # Architecture Decision Records (ADRs)

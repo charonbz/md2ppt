@@ -228,7 +228,7 @@ def watch_and_rebuild(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Slideshow Generator - Build PPTX, Web HTML, and Vector PDF presentations from Markdown and audio."
+        description="md2ppt - Build PPTX, Web HTML, and Vector PDF presentations from Markdown and audio."
     )
 
     parser.add_argument(

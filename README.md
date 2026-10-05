@@ -1,4 +1,4 @@
-# Slideshow Generator 🎬🎙️
+# md2ppt 🎬🎙️
 
 A presentation generation platform that transforms Markdown outlines and attached audio recordings into presentations across three first-class formats:
 1. **PowerPoint (.pptx)**: 16:9 widescreen presentation with native embedded media objects (click-to-play narration) and adaptive typography.

@@ -1,1 +1,1 @@
-"""Slideshow Generator package"""
+"""md2ppt package"""

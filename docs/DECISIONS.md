@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-This document records the key architectural and technological decisions made during the design and development of the Slideshow Generator platform.
+This document records the key architectural and technological decisions made during the design and development of the md2ppt platform.
 
 ---
 
