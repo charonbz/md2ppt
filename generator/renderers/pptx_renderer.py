@@ -29,6 +29,16 @@ def _get_font_name(theme: ThemeConfig) -> str:
     return "Calibri"
 
 
+def _get_title_font(theme: ThemeConfig) -> str:
+    """Font for slide and card titles. Like the HTML, non-editorial/terminal archetypes take the theme's
+    title font, so a serif theme (warm_academic) keeps serif titles on any archetype."""
+    if theme.archetype not in (ArchetypeType.EDITORIAL, ArchetypeType.TERMINAL):
+        first = theme.fonts.get("title_font", "").split(",")[0].strip(" '\"").lower()
+        if first in ("georgia", "times new roman", "serif"):
+            return "Georgia"
+    return _get_font_name(theme)
+
+
 def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: Pt, default_color: RGBColor, is_title: bool = False, accent_color: Optional[RGBColor] = None):
     """Parses inline Markdown and appends formatted TextRun objects to a PPTX paragraph."""
     runs_data = parse_markdown_runs(text)
@@ -178,7 +188,7 @@ class _CardTextFit:
     fits: bool
 
 
-def _fit_card_text(cards, title_prefix: str, font_name: str, base_title_pt: float, base_desc_pt: float,
+def _fit_card_text(cards, title_prefix: str, title_font: str, body_font: str, base_title_pt: float, base_desc_pt: float,
                    box_w, avail_h, bullet_style: BulletStyle) -> _CardTextFit:
     """Largest common title/description size (from the density tier down to 12 pt) at which every card
     title fits without a mid-word break and title + description fit the card height."""
@@ -187,13 +197,13 @@ def _fit_card_text(cards, title_prefix: str, font_name: str, base_title_pt: floa
     desc_pt = int(base_desc_pt)
     while True:
         title_pt = max(desc_pt, round(desc_pt * base_title_pt / base_desc_pt))
-        title_line_h = line_height_pt(font_name, title_pt)
+        title_line_h = line_height_pt(title_font, title_pt)
         heights, fits = [], True
         for c in cards:
-            title = wrap_markdown(f"{title_prefix}{c.title}", font_name, title_pt, width_pt, bold=True)
+            title = wrap_markdown(f"{title_prefix}{c.title}", title_font, title_pt, width_pt, bold=True)
             title_h = title.lines * title_line_h
             heights.append(title_h)
-            desc_h = _card_description_height_pt(c.description, font_name, desc_pt, width_pt, bullet_style)
+            desc_h = _card_description_height_pt(c.description, body_font, desc_pt, width_pt, bullet_style)
             if title.broke_word or title_h + desc_h > avail_pt:
                 fits = False
         if fits or desc_pt <= _MIN_CARD_DESC_PT:
@@ -202,17 +212,17 @@ def _fit_card_text(cards, title_prefix: str, font_name: str, base_title_pt: floa
 
 
 def _add_card_text(slide, card, left, top, width, bottom, title_h_pt: float, fit: _CardTextFit, title_prefix: str,
-                   font_name: str, primary_rgb, secondary_rgb, accent_rgb, bullet_style: BulletStyle):
+                   title_font: str, body_font: str, primary_rgb, secondary_rgb, accent_rgb, bullet_style: BulletStyle):
     """Card title box sized to its measured height, description stacked directly below it."""
     title_h = Pt(title_h_pt) + _BOX_INSET_Y
     title_box = slide.shapes.add_textbox(left, top, width, title_h)
     tf_t = title_box.text_frame
     tf_t.word_wrap = True
-    _add_formatted_runs(tf_t.paragraphs[0], f"{title_prefix}{card.title}", font_name, Pt(fit.title_pt), primary_rgb, is_title=True, accent_color=accent_rgb)
+    _add_formatted_runs(tf_t.paragraphs[0], f"{title_prefix}{card.title}", title_font, Pt(fit.title_pt), primary_rgb, is_title=True, accent_color=accent_rgb)
 
     desc_top = top + title_h + _TITLE_DESC_GAP
     desc_box = slide.shapes.add_textbox(left, desc_top, width, max(bottom - desc_top, _BOX_INSET_Y))
-    _render_card_description_pptx(desc_box, card.description, font_name, Pt(fit.desc_pt), secondary_rgb, accent_rgb, bullet_style)
+    _render_card_description_pptx(desc_box, card.description, body_font, Pt(fit.desc_pt), secondary_rgb, accent_rgb, bullet_style)
 
 
 def _add_picture_fit(slide, img_path: Path, left, top, max_width, max_height):
@@ -438,7 +448,7 @@ def _render_pptx_title_slide(slide, slide_data: SlideData, theme: ThemeConfig,
     tf = title_box.text_frame
     tf.word_wrap = True
     tp = tf.paragraphs[0]
-    _add_formatted_runs(tp, slide_data.title, font_name, title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
+    _add_formatted_runs(tp, slide_data.title, _get_title_font(theme), title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
     # 3. Accent decorative line
     if arch != ArchetypeType.MINIMAL:
@@ -626,7 +636,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
     text_dx, text_dw, title_dy, bottom_pad = _CARD_TEXT_GEOMETRY.get(arch, _DEFAULT_CARD_TEXT_GEOMETRY)
     title_prefix = "> " if arch == ArchetypeType.TERMINAL else ""
     cards = slide_data.cards[:4]
-    fit = _fit_card_text(cards, title_prefix, font_name, card_title_size.pt, card_desc_size.pt,
+    fit = _fit_card_text(cards, title_prefix, _get_title_font(theme), font_name, card_title_size.pt, card_desc_size.pt,
                          card_w - text_dw, height - title_dy - bottom_pad, theme.bullet_style)
     if not fit.fits:
         print(f"[PPTX] Warning: slide {slide_data.index}: card text does not fit even at {fit.desc_pt} pt; shorten it.")
@@ -740,7 +750,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             bp.alignment = PP_ALIGN.CENTER
 
         _add_card_text(slide, c, left + text_dx, top + title_dy, card_w - text_dw, top + height - bottom_pad,
-                       fit.title_heights_pt[i], fit, title_prefix, font_name, primary_rgb, secondary_rgb, accent_rgb,
+                       fit.title_heights_pt[i], fit, title_prefix, _get_title_font(theme), font_name, primary_rgb, secondary_rgb, accent_rgb,
                        theme.bullet_style)
 
 
@@ -973,6 +983,7 @@ _AUDIO_WIDGET_LEFT = Inches(10.2)
 
 def _add_header(slide, category: str, slide_data: SlideData, accent_rgb, primary_rgb, theme: ThemeConfig):
     font_name = _get_font_name(theme)
+    title_font = _get_title_font(theme)
     arch = theme.archetype
     title = slide_data.title
 
@@ -983,8 +994,8 @@ def _add_header(slide, category: str, slide_data: SlideData, accent_rgb, primary
     avail_pt = (_HEADER_TITLE_H - _BOX_INSET_Y) / 12700
     title_pt = _HEADER_TITLE_PT
     while True:
-        wrapped = wrap_markdown(title, font_name, title_pt, width_pt, bold=True)
-        fits = not wrapped.broke_word and wrapped.lines * line_height_pt(font_name, title_pt) <= avail_pt
+        wrapped = wrap_markdown(title, title_font, title_pt, width_pt, bold=True)
+        fits = not wrapped.broke_word and wrapped.lines * line_height_pt(title_font, title_pt) <= avail_pt
         if fits or title_pt <= _MIN_HEADER_TITLE_PT:
             break
         title_pt -= 1
@@ -1007,7 +1018,7 @@ def _add_header(slide, category: str, slide_data: SlideData, accent_rgb, primary
     tf = title_box.text_frame
     tf.word_wrap = True
     tp = tf.paragraphs[0]
-    _add_formatted_runs(tp, title, font_name, title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
+    _add_formatted_runs(tp, title, title_font, title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
 
     # Editorial hairline header separator
     if arch == ArchetypeType.EDITORIAL:

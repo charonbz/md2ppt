@@ -579,3 +579,16 @@ On a real PowerPoint the pisa deck overflowed: card titles were placed in fixed 
 
 ### Rationale
 PowerPoint's own "shrink text on overflow" is only recalculated when text is edited, so it can't be relied on for generated files. Measuring at generation time is the only way to guarantee nothing spills, and per-slide sizes keep neighbouring cards consistent. The 12 pt floor plus a warning was preferred over automatic slide splitting, which would change the deck's structure unpredictably.
+
+---
+
+## ADR-025: PPTX Titles Follow a Serif Theme Title Font
+
+### Context
+The PPTX picked one font per archetype, ignoring the theme's `fonts`. With `--theme warm_academic --archetype cards` the HTML showed Georgia titles (`--title-font`), but the PPTX was Calibri throughout, so the theme looked lost in PowerPoint.
+
+### Decision
+Slide, title-slide and card titles use `_get_title_font`: on archetypes other than editorial and terminal (which force their own font, as in the HTML), a theme `title_font` starting with Georgia, Times New Roman or serif maps to Georgia. Other title fonts keep the archetype font, and body text keeps the archetype font. Measurement in `_fit_card_text` and `_add_header` uses the same title font.
+
+### Rationale
+Only serif titles were visibly missing; sans and display stacks already map to the same PPTX fonts the archetypes use, so a general CSS-stack-to-PPTX mapping was not needed.
