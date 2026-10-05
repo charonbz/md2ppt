@@ -187,7 +187,8 @@ def _px(n: float) -> Emu:
     return Emu(round(n * Inches(13.333) / 1600))
 
 
-_CARD_BADGE_D = Inches(0.4)
+_CARD_BADGE_SIDE = Inches(0.4)
+_CARD_BADGE_ROUNDING = 8 / 40  # HTML .card-index-badge: 8 px radius on a 40 px square
 
 
 @dataclass
@@ -773,8 +774,9 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             card.line.color.rgb = card_border_rgb
             card.line.width = Pt(1)
 
-            d = _CARD_BADGE_D
-            badge = slide.shapes.add_shape(MSO_SHAPE.OVAL, left - d // 2, top - d // 2, d, d)
+            d = _CARD_BADGE_SIDE
+            badge = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left - d // 2, top - d // 2, d, d)
+            badge.adjustments[0] = _CARD_BADGE_ROUNDING
             badge.fill.solid()
             badge.fill.fore_color.rgb = badge_bg_rgb
             badge.line.color.rgb = card_border_rgb

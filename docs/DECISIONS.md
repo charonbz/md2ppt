@@ -605,7 +605,7 @@ In PowerPoint the narration control was a 2.2" pink box reading "🔊 Audio Narr
 ### Decision
 - The narration control is a pill built from native shapes with the HTML px sizes. The embedded audio shape is the play button: its poster image is a round play icon drawn with Pillow in the theme's `audio_btn_bg` / `audio_btn_text`, so the click target is the button the user sees.
 - The equalizer bars are dropped: in the HTML they animate while playing, and a static copy in PowerPoint would only suggest a state it cannot show.
-- Cards-archetype cards take their corner radius from `card_radius_px`, and the index badge is a circle centred on the top-left corner. The card title moves up to 0.35" from the card top.
+- Cards-archetype cards take their corner radius from `card_radius_px`, and the index badge is a square with the HTML badge's corner rounding (8 px on 40 px), centred on the top-left corner. A circle was tried first; the user preferred the HTML's rounded square. The card title moves up to 0.35" from the card top.
 
 ### Rationale
 The pill keeps the PPTX consistent with the HTML the user already likes, and using the media shape as the button avoids a second, invisible click target.
