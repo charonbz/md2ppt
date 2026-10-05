@@ -1,6 +1,7 @@
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from PIL import Image
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -11,6 +12,7 @@ from pptx.oxml import parse_xml
 from pptx.oxml.ns import nsdecls
 from ..models import PresentationData, SlideData, SlideType, ThemeConfig, ArchetypeType, DensityTier, BulletStyle
 from ..markdown_utils import parse_markdown_runs
+from .text_fit import line_height_pt, wrap_markdown
 
 
 def _get_font_name(theme: ThemeConfig) -> str:
@@ -88,13 +90,20 @@ def _add_formatted_runs(paragraph, text: str, default_font: str, default_size: P
                 pass
 
 
+_BULLET_RE = re.compile(r"^[-*•]\s+(.*)$")
+
+
+def _bullet_marker(bullet_style: BulletStyle) -> str:
+    return "› " if bullet_style == BulletStyle.CHEVRON else ("– " if bullet_style == BulletStyle.EDITORIAL else "• ")
+
+
 def _render_card_description_pptx(desc_box, desc_text: str, font_name: str, card_desc_size: Pt, secondary_rgb: RGBColor, accent_rgb: RGBColor, bullet_style: BulletStyle):
     """Renders card description, formatting bullet lines with styled bullet markers in accent color."""
     # ponytail: clean bullet formatting per bullet_style
     tf = desc_box.text_frame
     tf.word_wrap = True
     lines = desc_text.split("\n")
-    has_bullet = any(re.match(r"^[-*•]\s+(.*)$", line.strip()) for line in lines)
+    has_bullet = any(_BULLET_RE.match(line.strip()) for line in lines)
 
     if not has_bullet:
         dp = tf.paragraphs[0]
@@ -102,8 +111,7 @@ def _render_card_description_pptx(desc_box, desc_text: str, font_name: str, card
         _add_formatted_runs(dp, desc_text, font_name, card_desc_size, secondary_rgb, accent_color=accent_rgb)
         return
 
-    bullet_marker = "› " if bullet_style == BulletStyle.CHEVRON else ("– " if bullet_style == BulletStyle.EDITORIAL else "• ")
-
+    bullet_marker = _bullet_marker(bullet_style)
     first = True
     for line in lines:
         s = line.strip()
@@ -113,7 +121,7 @@ def _render_card_description_pptx(desc_box, desc_text: str, font_name: str, card
         first = False
         p.line_spacing = 1.25
         p.space_after = Pt(3)
-        m = re.match(r"^[-*•]\s+(.*)$", s)
+        m = _BULLET_RE.match(s)
         if m:
             bullet_run = p.add_run()
             bullet_run.text = bullet_marker
@@ -124,6 +132,87 @@ def _render_card_description_pptx(desc_box, desc_text: str, font_name: str, card
             _add_formatted_runs(p, m.group(1).strip(), font_name, card_desc_size, secondary_rgb, accent_color=accent_rgb)
         else:
             _add_formatted_runs(p, s, font_name, card_desc_size, secondary_rgb, accent_color=accent_rgb)
+
+
+def _card_description_height_pt(desc_text: str, font_name: str, size_pt: float, width_pt: float, bullet_style: BulletStyle) -> float:
+    """Measured height of `_render_card_description_pptx` output (same paragraphs, spacing and markers)."""
+    if not desc_text:
+        return 0.0
+    line_h = line_height_pt(font_name, size_pt)
+    lines = desc_text.split("\n")
+    if not any(_BULLET_RE.match(line.strip()) for line in lines):
+        return wrap_markdown(desc_text, font_name, size_pt, width_pt).lines * line_h * 1.3
+    total = 0.0
+    for line in lines:
+        s = line.strip()
+        if not s:
+            continue
+        m = _BULLET_RE.match(s)
+        wrapped = wrap_markdown(m.group(1).strip(), font_name, size_pt, width_pt, prefix=_bullet_marker(bullet_style)) if m \
+            else wrap_markdown(s, font_name, size_pt, width_pt)
+        total += wrapped.lines * line_h * 1.25 + 3
+    return total
+
+
+# Default text frame insets of a python-pptx text box: 0.1" left/right, 0.05" top/bottom.
+_BOX_INSET_X = Inches(0.2)
+_BOX_INSET_Y = Inches(0.1)
+_TITLE_DESC_GAP = Inches(0.12)
+_MIN_CARD_DESC_PT = 12
+
+# Card text placement per archetype: (left offset, width reduction, title top offset, bottom padding).
+_CARD_TEXT_GEOMETRY = {
+    ArchetypeType.EDITORIAL: (Inches(0.2), Inches(0.3), Inches(0.55), Inches(0.0)),
+    ArchetypeType.NEUBRUTALISM: (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.2)),
+    ArchetypeType.MINIMAL: (Inches(0.0), Inches(0.0), Inches(0.75), Inches(0.0)),
+    ArchetypeType.CORPORATE: (Inches(0.25), Inches(0.5), Inches(0.9), Inches(0.2)),
+}
+_DEFAULT_CARD_TEXT_GEOMETRY = (Inches(0.25), Inches(0.5), Inches(0.95), Inches(0.2))  # cards, terminal
+
+
+@dataclass
+class _CardTextFit:
+    title_pt: int
+    desc_pt: int
+    title_heights_pt: List[float]
+    fits: bool
+
+
+def _fit_card_text(cards, title_prefix: str, font_name: str, base_title_pt: float, base_desc_pt: float,
+                   box_w, avail_h, bullet_style: BulletStyle) -> _CardTextFit:
+    """Largest common title/description size (from the density tier down to 12 pt) at which every card
+    title fits without a mid-word break and title + description fit the card height."""
+    width_pt = (box_w - _BOX_INSET_X) / 12700
+    avail_pt = (avail_h - 2 * _BOX_INSET_Y - _TITLE_DESC_GAP) / 12700
+    desc_pt = int(base_desc_pt)
+    while True:
+        title_pt = max(desc_pt, round(desc_pt * base_title_pt / base_desc_pt))
+        title_line_h = line_height_pt(font_name, title_pt)
+        heights, fits = [], True
+        for c in cards:
+            title = wrap_markdown(f"{title_prefix}{c.title}", font_name, title_pt, width_pt, bold=True)
+            title_h = title.lines * title_line_h
+            heights.append(title_h)
+            desc_h = _card_description_height_pt(c.description, font_name, desc_pt, width_pt, bullet_style)
+            if title.broke_word or title_h + desc_h > avail_pt:
+                fits = False
+        if fits or desc_pt <= _MIN_CARD_DESC_PT:
+            return _CardTextFit(title_pt, desc_pt, heights, fits)
+        desc_pt -= 1
+
+
+def _add_card_text(slide, card, left, top, width, bottom, title_h_pt: float, fit: _CardTextFit, title_prefix: str,
+                   font_name: str, primary_rgb, secondary_rgb, accent_rgb, bullet_style: BulletStyle):
+    """Card title box sized to its measured height, description stacked directly below it."""
+    title_h = Pt(title_h_pt) + _BOX_INSET_Y
+    title_box = slide.shapes.add_textbox(left, top, width, title_h)
+    tf_t = title_box.text_frame
+    tf_t.word_wrap = True
+    _add_formatted_runs(tf_t.paragraphs[0], f"{title_prefix}{card.title}", font_name, Pt(fit.title_pt), primary_rgb, is_title=True, accent_color=accent_rgb)
+
+    desc_top = top + title_h + _TITLE_DESC_GAP
+    desc_box = slide.shapes.add_textbox(left, desc_top, width, max(bottom - desc_top, _BOX_INSET_Y))
+    _render_card_description_pptx(desc_box, card.description, font_name, Pt(fit.desc_pt), secondary_rgb, accent_rgb, bullet_style)
 
 
 def _add_picture_fit(slide, img_path: Path, left, top, max_width, max_height):
@@ -184,7 +273,7 @@ def render_pptx_presentation(pres: PresentationData, theme: ThemeConfig, dist_di
         bg_shape.line.fill.background()  # no line
 
         # 2. Add Audio shape if present
-        if slide_data.audio_path and slide_data.audio_path.exists():
+        if _has_audio(slide_data):
             _add_audio_widget(slide, slide_data.audio_path, accent_rgb, badge_bg_rgb, badge_text_rgb, theme)
 
         # 3. Slide counter in bottom right
@@ -370,7 +459,7 @@ def _render_pptx_definition_slide(slide, slide_data: SlideData, theme: ThemeConf
                                   card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
                                   deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "DEFINÍCIÓ"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
+    _add_header(slide, cat_label, slide_data, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
     first_para = slide_data.quote or (slide_data.paragraphs[0] if slide_data.paragraphs else "")
@@ -485,7 +574,7 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                              card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb, badge_bg_rgb, badge_text_rgb,
                              deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "ÁTTEKINTÉS"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
+    _add_header(slide, cat_label, slide_data, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
 
@@ -534,7 +623,15 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
         card_w = Inches(2.6)
         gap = Inches(0.31)
 
-    for i, c in enumerate(slide_data.cards[:4]):
+    text_dx, text_dw, title_dy, bottom_pad = _CARD_TEXT_GEOMETRY.get(arch, _DEFAULT_CARD_TEXT_GEOMETRY)
+    title_prefix = "> " if arch == ArchetypeType.TERMINAL else ""
+    cards = slide_data.cards[:4]
+    fit = _fit_card_text(cards, title_prefix, font_name, card_title_size.pt, card_desc_size.pt,
+                         card_w - text_dw, height - title_dy - bottom_pad, theme.bullet_style)
+    if not fit.fits:
+        print(f"[PPTX] Warning: slide {slide_data.index}: card text does not fit even at {fit.desc_pt} pt; shorten it.")
+
+    for i, c in enumerate(cards):
         left = Inches(1.0) + i * (card_w + gap)
 
         if arch == ArchetypeType.EDITORIAL:
@@ -552,17 +649,6 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             ip.font.size = Pt(14)
             ip.font.bold = True
             ip.font.color.rgb = accent_rgb
-
-            # Title
-            title_box = slide.shapes.add_textbox(left + Inches(0.2), top + Inches(0.55), card_w - Inches(0.3), Inches(1.2))
-            tf_t = title_box.text_frame
-            tf_t.word_wrap = True
-            tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
-
-            # Desc
-            desc_box = slide.shapes.add_textbox(left + Inches(0.2), top + Inches(1.8), card_w - Inches(0.3), Inches(2.2))
-            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
 
         elif arch == ArchetypeType.NEUBRUTALISM:
             # Hard black shadow shape
@@ -597,15 +683,6 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             bp.font.color.rgb = RGBColor(0, 0, 0)
             bp.alignment = PP_ALIGN.CENTER
 
-            title_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(1.05), card_w - Inches(0.8), Inches(1.1))
-            tf_t = title_box.text_frame
-            tf_t.word_wrap = True
-            tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
-
-            desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
-            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
-
         elif arch == ArchetypeType.MINIMAL:
             # Transparent cards, oversized numeric badge above title
             idx_box = slide.shapes.add_textbox(left, top, card_w, Inches(0.7))
@@ -615,15 +692,6 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             ip.font.size = Pt(36)
             ip.font.bold = True
             ip.font.color.rgb = accent_rgb
-
-            title_box = slide.shapes.add_textbox(left, top + Inches(0.75), card_w, Inches(1.1))
-            tf_t = title_box.text_frame
-            tf_t.word_wrap = True
-            tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
-
-            desc_box = slide.shapes.add_textbox(left, top + Inches(1.9), card_w, Inches(2.2))
-            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
 
         elif arch == ArchetypeType.CORPORATE:
             # Sharp rectangle + top accent banner
@@ -650,15 +718,6 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             bp.font.color.rgb = RGBColor(255, 255, 255)
             bp.alignment = PP_ALIGN.CENTER
 
-            title_box = slide.shapes.add_textbox(left + Inches(0.35), top + Inches(0.95), card_w - Inches(0.7), Inches(1.1))
-            tf_t = title_box.text_frame
-            tf_t.word_wrap = True
-            tp = tf_t.paragraphs[0]
-            _add_formatted_runs(tp, c.title, font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
-
-            desc_box = slide.shapes.add_textbox(left + Inches(0.35), top + Inches(2.1), card_w - Inches(0.7), Inches(1.9))
-            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
-
         else:
             # Terminal & Modern Cards
             shape_type = MSO_SHAPE.RECTANGLE if arch == ArchetypeType.TERMINAL else MSO_SHAPE.ROUNDED_RECTANGLE
@@ -680,21 +739,15 @@ def _render_pptx_cards_slide(slide, slide_data: SlideData, theme: ThemeConfig,
             bp.font.color.rgb = badge_text_rgb
             bp.alignment = PP_ALIGN.CENTER
 
-            title_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(1.05), card_w - Inches(0.8), Inches(1.1))
-            tf_t = title_box.text_frame
-            tf_t.word_wrap = True
-            tp = tf_t.paragraphs[0]
-            title_prefix = "> " if arch == ArchetypeType.TERMINAL else ""
-            _add_formatted_runs(tp, f"{title_prefix}{c.title}", font_name, card_title_size, primary_rgb, is_title=True, accent_color=accent_rgb)
-
-            desc_box = slide.shapes.add_textbox(left + Inches(0.4), top + Inches(2.2), card_w - Inches(0.8), Inches(1.8))
-            _render_card_description_pptx(desc_box, c.description, font_name, card_desc_size, secondary_rgb, accent_rgb, theme.bullet_style)
+        _add_card_text(slide, c, left + text_dx, top + title_dy, card_w - text_dw, top + height - bottom_pad,
+                       fit.title_heights_pt[i], fit, title_prefix, font_name, primary_rgb, secondary_rgb, accent_rgb,
+                       theme.bullet_style)
 
 
 def _render_pptx_code_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                             primary_rgb, secondary_rgb, accent_rgb,
                             deck_title: str = ""):
-    _add_header(slide, "KÓDRÉSZLET", slide_data.title, accent_rgb, primary_rgb, theme)
+    _add_header(slide, "KÓDRÉSZLET", slide_data, accent_rgb, primary_rgb, theme)
     lang = (slide_data.code_snippet.get("language") if slide_data.code_snippet else "code") or "code"
     code_text = (slide_data.code_snippet.get("code") if slide_data.code_snippet else "") or ""
 
@@ -728,7 +781,7 @@ def _render_pptx_table_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                              card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
                              deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "TÁBLÁZAT"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
+    _add_header(slide, cat_label, slide_data, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     arch = theme.archetype
     tier = slide_data.density_tier
@@ -820,7 +873,7 @@ def _render_pptx_image_slide(slide, slide_data: SlideData, theme: ThemeConfig,
                              accent_rgb, primary_rgb, secondary_rgb,
                              deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "ILLUSZTRÁCIÓ"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
+    _add_header(slide, cat_label, slide_data, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     tier = slide_data.density_tier
     intro_size = Pt(20) if tier == DensityTier.SPACIOUS else (Pt(17) if tier == DensityTier.BALANCED else Pt(14))
@@ -853,7 +906,7 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
                                 card_bg_rgb, card_border_rgb, primary_rgb, secondary_rgb, accent_rgb,
                                 deck_title: str = ""):
     cat_label = deck_title.upper() if deck_title else "ÁTTEKINTÉS"
-    _add_header(slide, cat_label, slide_data.title, accent_rgb, primary_rgb, theme)
+    _add_header(slide, cat_label, slide_data, accent_rgb, primary_rgb, theme)
     font_name = _get_font_name(theme)
     tier = slide_data.density_tier
 
@@ -908,11 +961,36 @@ def _render_pptx_standard_slide(slide, slide_data: SlideData, theme: ThemeConfig
             _add_formatted_runs(cp, img_info.alt, font_name, Pt(11), secondary_rgb, accent_color=accent_rgb)
 
 
-def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme: ThemeConfig):
+def _has_audio(slide_data: SlideData) -> bool:
+    return bool(slide_data.audio_path and slide_data.audio_path.exists())
+
+
+_HEADER_TITLE_PT = 32
+_MIN_HEADER_TITLE_PT = 20
+_HEADER_TITLE_H = Inches(1.1)
+_AUDIO_WIDGET_LEFT = Inches(10.2)
+
+
+def _add_header(slide, category: str, slide_data: SlideData, accent_rgb, primary_rgb, theme: ThemeConfig):
     font_name = _get_font_name(theme)
     arch = theme.archetype
+    title = slide_data.title
 
-    title_size = Pt(32)
+    # The title stops short of the audio widget; it shrinks from 32 pt until it fits without a mid-word break.
+    title_left = Inches(1.0)
+    title_w = (_AUDIO_WIDGET_LEFT - Inches(0.15) - title_left) if _has_audio(slide_data) else Inches(11.0)
+    width_pt = (title_w - _BOX_INSET_X) / 12700
+    avail_pt = (_HEADER_TITLE_H - _BOX_INSET_Y) / 12700
+    title_pt = _HEADER_TITLE_PT
+    while True:
+        wrapped = wrap_markdown(title, font_name, title_pt, width_pt, bold=True)
+        fits = not wrapped.broke_word and wrapped.lines * line_height_pt(font_name, title_pt) <= avail_pt
+        if fits or title_pt <= _MIN_HEADER_TITLE_PT:
+            break
+        title_pt -= 1
+    if not fits:
+        print(f"[PPTX] Warning: slide {slide_data.index}: title does not fit even at {title_pt} pt; shorten it.")
+    title_size = Pt(title_pt)
 
     # Category lead
     cat_box = slide.shapes.add_textbox(Inches(1.0), Inches(0.5), Inches(8.0), Inches(0.35))
@@ -925,7 +1003,7 @@ def _add_header(slide, category: str, title: str, accent_rgb, primary_rgb, theme
     cp.font.color.rgb = accent_rgb
 
     # Slide Title
-    title_box = slide.shapes.add_textbox(Inches(1.0), Inches(0.85), Inches(11.0), Inches(1.1))
+    title_box = slide.shapes.add_textbox(title_left, Inches(0.85), title_w, _HEADER_TITLE_H)
     tf = title_box.text_frame
     tf.word_wrap = True
     tp = tf.paragraphs[0]

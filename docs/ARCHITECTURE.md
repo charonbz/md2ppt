@@ -64,7 +64,9 @@ md2ppt/
 │   ├── renderers/              # Format-specific rendering engines
 │   │   ├── html_renderer.py    # Interactive standalone HTML5 presentation renderer
 │   │   ├── pptx_renderer.py    # PowerPoint generator (python-pptx)
+│   │   ├── text_fit.py         # PPTX text measurement (line wrapping, line height) with bundled fonts
 │   │   └── pdf_renderer.py     # Headless Chrome vector PDF exporter
+│   ├── fonts/                  # Metric-compatible fonts used only to measure PPTX text (never embedded)
 │   ├── showcase.py             # --showcase: every theme x archetype on one PNG grid
 │   └── cli.py                  # CLI entry point and reusable TCP web server
 ├── pisa/                       # Living reference example
@@ -210,6 +212,8 @@ To prevent sparse slides from having tiny fonts while ensuring content-heavy sli
 ### 4.5. PowerPoint Renderer (`generator/renderers/pptx_renderer.py`)
 - Uses `python-pptx` to build 16:9 widescreen slides (`13.333 × 7.5` inches).
 - Synchronized with `slide.density_tier`: dynamically scales title `Pt(...)`, body text, card labels, and paragraph spacing across spacious, balanced, and compact tiers.
+- **Measured card text fit**: on cards slides the density tier only gives the starting sizes. `text_fit.py` wraps every card title and description with real glyph widths (`generator/fonts/`: Carlito for Calibri, Liberation Sans for Arial / Arial Black, Gelasio for Georgia, Liberation Mono for Consolas), and `_fit_card_text` lowers one common title/description size per slide until every title fits without a mid-word break and title + description fit the card. Each title box is as tall as its measured text and the description starts right below it. Descriptions stop at 12 pt; if that still does not fit, generation prints `[PPTX] Warning: slide N: ...`. Card text insets per archetype live in `_CARD_TEXT_GEOMETRY`.
+- **Header title**: on slides with narration the title box ends before the audio widget, and the title shrinks from 32 pt (minimum 20 pt, with a warning) until it fits two lines without a mid-word break.
 - Renders cards and content blocks as native vector rounded shapes colored according to the selected theme. A trailing paragraph on a cards slide renders as an italic footnote below the grid (parity with HTML `.slide-footnote`).
 - Line breaks use `paragraph.add_line_break()` (`<a:br/>`).
 - Embeds audio directly into the `.pptx` ZIP package (`ppt/media/media1.m4a`) as a native media shape (`<p14:media>` and `<a:hlinkClick action="ppaction://media">`), triggering playback on click.

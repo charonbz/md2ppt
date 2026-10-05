@@ -562,3 +562,20 @@ Links in the PPTX were not clickable: `parse_markdown_runs` tagged link runs wit
 
 ### Rationale
 A clickable label makes the printed URL redundant. The PDF is exported from the HTML, so dropping the suffix costs nothing in print.
+
+---
+
+## ADR-024: Measured PPTX Card Text Fit with Bundled Metric-Compatible Fonts
+
+### Context
+On a real PowerPoint the pisa deck overflowed: card titles were placed in fixed 1.1" boxes with descriptions at a fixed offset, so three- and four-line titles ran into the description, long descriptions spilled out of the card bottom, and `Matematizálás` broke mid-word. The density tier is estimated from character counts, which underestimates long Hungarian words. Slide titles also ran under the audio widget.
+
+### Decision
+- `generator/renderers/text_fit.py` wraps inline Markdown like PowerPoint does (breaks at spaces, after `-` and `/`) using real glyph widths from fonts in `generator/fonts/`: Carlito (Calibri), Liberation Sans (Arial; Arial Black with a 1.2 width factor), Gelasio (Georgia), Liberation Mono (Consolas, 1.08 factor). The fonts are only used for measuring and are never embedded in the PPTX; bundling them keeps the result the same on every machine.
+- On cards slides `_fit_card_text` picks one title/description size per slide, starting from the density tier and stepping down until every title fits without a mid-word break and title + description fit the card. Title boxes take their measured height; descriptions start right below.
+- The description floor is 12 pt. Below that, generation prints a warning naming the slide and keeps 12 pt; the author shortens the text.
+- Card text insets were reduced (`_CARD_TEXT_GEOMETRY`, e.g. 0.25" instead of 0.4" sides in the cards archetype); with the old insets the four-card pisa slides did not fit even at 12 pt.
+- On slides with narration the header title box ends before the audio widget and shrinks from 32 pt (minimum 20 pt).
+
+### Rationale
+PowerPoint's own "shrink text on overflow" is only recalculated when text is edited, so it can't be relied on for generated files. Measuring at generation time is the only way to guarantee nothing spills, and per-slide sizes keep neighbouring cards consistent. The 12 pt floor plus a warning was preferred over automatic slide splitting, which would change the deck's structure unpredictably.
