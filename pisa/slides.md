@@ -116,5 +116,10 @@ Mi a szerepe, hogyan hat az életünkre, hogyan segíti a döntéseinket és a k
 
 # Köszönöm a figyelmet!
 
-- Diasor az oktató által szabadon felhasználható.
-- HTML verzió: [https://bejewelled-khapse-298b45.netlify.app](https://bejewelled-khapse-298b45.netlify.app/)
+### HTML verzió:
+[bejewelled-khapse-298b45.netlify.app](https://bejewelled-khapse-298b45.netlify.app/)
+
+### Felhasznált Ai :
+- **Antigravity (3.8 Flash) / Claude Code (Opus-5.5):** [github.com/charonbz/md2ppt](https://github.com/charonbz/md2ppt) _(saját slideshow generáló alkalmazás)_
+- **Gemini-3.8 Flash:** [share.gemini.google/4Ga8B8WCqp3j](https://share.gemini.google/4Ga8B8WCqp3j) _(A beszélgetés a diákhoz nem adott érdemi ötletet vagy javaslatot, egyedül az **induktív, deduktív** kifejezések valamint - egy nem lementett - szinonímákra vonatkozó kérdésből a **fejtudás, kéztudás** kitalált, de szemléletes szavak)_
+- **piper:** [github.com/OHF-Voice/piper1-gpl](https://github.com/OHF-Voice/piper1-gpl) _Gemini csevegés felolvasása_
